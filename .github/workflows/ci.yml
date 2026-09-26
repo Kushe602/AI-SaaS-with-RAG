@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Run tests
+        env:
+          USE_FAKE_EMBEDDINGS: "1"
+          SECRET_KEY: "ci-secret-key-please-use-at-least-32-bytes"
+          DATABASE_URL: "sqlite+aiosqlite:///./ci.db"
+        run: pytest -q

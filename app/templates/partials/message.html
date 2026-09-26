@@ -1,0 +1,25 @@
+{% if message.role == 'user' %}
+<div class="flex justify-end">
+  <div class="bubble bg-indigo-600 text-white whitespace-pre-wrap">{{ message.content }}</div>
+</div>
+{% else %}
+<div class="flex justify-start">
+  <div class="bubble border border-slate-200 bg-white text-slate-800">
+    <div class="whitespace-pre-wrap">{{ message.content }}</div>
+    {% set cites = message.citations | fromjson %}
+    {% if cites %}
+    <div class="mt-2 border-t border-slate-100 pt-2 text-xs">
+      <p class="mb-1 font-semibold uppercase tracking-wide text-slate-400">Sources</p>
+      <ol class="space-y-1">
+        {% for c in cites %}
+        <li>
+          <span class="font-medium text-slate-600">[{{ c.n }}] {{ c.filename }}</span>
+          <span class="text-slate-400">— {{ c.snippet }}…</span>
+        </li>
+        {% endfor %}
+      </ol>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

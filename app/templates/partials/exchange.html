@@ -1,0 +1,12 @@
+<div class="flex justify-end">
+  <div class="bubble bg-indigo-600 text-white whitespace-pre-wrap">{{ user_content }}</div>
+</div>
+<div class="flex justify-start">
+  <div id="msg-{{ assistant_id }}"
+       class="bubble stream-pending border border-slate-200 bg-white text-slate-800"
+       data-cid="{{ conversation_id }}"
+       data-mid="{{ assistant_id }}">
+    <div class="js-content whitespace-pre-wrap"></div>
+    <div class="js-sources"></div>
+  </div>
+</div>
