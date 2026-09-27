@@ -2,10 +2,16 @@
 
 > An AI SaaS that lets users upload documents and chat with them — answers are grounded in the source text using **retrieval-augmented generation (RAG)** and streamed live with citations.
 
+[![Live demo](https://img.shields.io/badge/live%20demo-online-brightgreen)](https://docuchat-94mn.onrender.com)
 [![CI](https://github.com/Kushe602/AI-SaaS-with-RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/Kushe602/AI-SaaS-with-RAG/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 [![Deploy to Render](https://img.shields.io/badge/deploy-Render-46E3B7)](https://render.com/deploy?repo=https://github.com/Kushe602/AI-SaaS-with-RAG)
+
+> **Live demo:** https://docuchat-94mn.onrender.com — hosted on a free instance,
+> so the first request may take ~50s to wake it. It runs in a keyless demo mode
+> (fake embeddings + extractive, cited answers), so you can register, upload a
+> document, and try grounded RAG answers with no API key.
 
 DocuChat is a full-stack, production-shaped web application built with **FastAPI + HTMX** and **any OpenAI-compatible LLM**. Users sign up, upload PDFs or text files, and ask questions in natural language. The app retrieves the most relevant passages from their documents and asks the model to answer using only that context — citing its sources.
 
