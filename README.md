@@ -2,11 +2,12 @@
 
 > An AI SaaS that lets users upload documents and chat with them — answers are grounded in the source text using **retrieval-augmented generation (RAG)** and streamed live with citations.
 
-![CI](https://github.com/your-username/docuchat/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/Kushe602/AI-SaaS-with-RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/Kushe602/AI-SaaS-with-RAG/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![Deploy to Render](https://img.shields.io/badge/deploy-Render-46E3B7)](https://render.com/deploy?repo=https://github.com/Kushe602/AI-SaaS-with-RAG)
 
-DocuChat is a full-stack, production-shaped web application built with **FastAPI + HTMX** and **Claude**. Users sign up, upload PDFs or text files, and ask questions in natural language. The app retrieves the most relevant passages from their documents and asks Claude to answer using only that context — citing its sources.
+DocuChat is a full-stack, production-shaped web application built with **FastAPI + HTMX** and **any OpenAI-compatible LLM**. Users sign up, upload PDFs or text files, and ask questions in natural language. The app retrieves the most relevant passages from their documents and asks the model to answer using only that context — citing its sources.
 
 <!-- Replace with a real screenshot or GIF once you deploy: it's the first thing recruiters look at. -->
 <!-- ![DocuChat screenshot](docs/screenshot.png) -->
@@ -40,11 +41,11 @@ DocuChat is a full-stack, production-shaped web application built with **FastAPI
                │ context + question
                ▼
         ┌──────────────┐   streamed tokens + citations
-        │  Claude LLM  │ ─────────────────────────────▶  Browser
+        │  LLM (any)   │ ─────────────────────────────▶  Browser
         └──────────────┘
 ```
 
-The RAG pipeline: **extract → chunk → embed → retrieve → generate**. Retrieved passages are injected into the prompt as numbered context, and Claude is instructed to answer only from that context and cite passages inline.
+The RAG pipeline: **extract → chunk → embed → retrieve → generate**. Retrieved passages are injected into the prompt as numbered context, and the model is instructed to answer only from that context and cite passages inline.
 
 ---
 
@@ -56,7 +57,7 @@ The RAG pipeline: **extract → chunk → embed → retrieve → generate**. Ret
 | Frontend       | Server-rendered Jinja2 + HTMX + Tailwind (CDN), SSE streaming |
 | Database / ORM | SQLAlchemy 2.0 (async) — SQLite locally, Postgres in Docker   |
 | Embeddings     | fastembed (ONNX, local, no GPU) — swappable                   |
-| LLM            | Anthropic Claude (`claude-sonnet-5` by default)               |
+| LLM            | Any OpenAI-compatible API (OpenAI, Groq, OpenRouter, local…)  |
 | Auth           | bcrypt password hashing + JWT cookies (PyJWT)                 |
 | Tests / CI     | pytest + httpx, GitHub Actions                                |
 
@@ -64,11 +65,11 @@ The RAG pipeline: **extract → chunk → embed → retrieve → generate**. Ret
 
 ## 🚀 Quickstart (local, zero infrastructure)
 
-Requires Python 3.11+. Uses SQLite and needs only an Anthropic API key.
+Requires Python 3.11+. Uses SQLite and needs only an API key for any OpenAI-compatible LLM provider.
 
 ```bash
-git clone https://github.com/your-username/docuchat.git
-cd docuchat
+git clone https://github.com/Kushe602/AI-SaaS-with-RAG.git
+cd AI-SaaS-with-RAG
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 cp .env.example .env                                 # then edit .env
@@ -78,7 +79,9 @@ Set at least these in `.env`:
 
 ```bash
 SECRET_KEY=<run: python -c "import secrets; print(secrets.token_hex(32))">
-ANTHROPIC_API_KEY=sk-ant-...
+LLM_API_KEY=...
+LLM_BASE_URL=https://api.justwoker.icu/v1
+LLM_MODEL=gpt-4o-mini
 ```
 
 Run it:
@@ -96,12 +99,22 @@ Open http://localhost:8000, create an account, upload a document, and start chat
 ## 🐳 Run with Docker (FastAPI + Postgres)
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
+export LLM_API_KEY=...                               # any OpenAI-compatible provider key
 export SECRET_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
 docker compose up --build
 ```
 
 This starts Postgres (with the `pgvector` extension available) and the app on http://localhost:8000.
+
+---
+
+## ☁️ Deploy a live demo (Render, free)
+
+DocuChat ships a [`render.yaml`](render.yaml) Blueprint that deploys a **keyless demo**: deterministic hashing embeddings power retrieval, and answers are assembled extractively from the retrieved passages (with `[n]` citations), so the full **upload → retrieve → cited-answer** flow works live with no API key.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Kushe602/AI-SaaS-with-RAG)
+
+Click the button (or in the Render dashboard use **New + → Blueprint** and pick this repo). Render builds the Dockerfile, generates a `SECRET_KEY`, and sets `USE_FAKE_EMBEDDINGS=true` + `USE_FAKE_LLM=true`. The free plan sleeps when idle (~50s cold start) and uses ephemeral SQLite (uploaded docs reset on restart). Set `LLM_API_KEY` (plus `LLM_BASE_URL` / `LLM_MODEL` for your provider) and drop `USE_FAKE_LLM` for fully model-generated answers.
 
 ---
 
@@ -113,9 +126,11 @@ All settings are read from environment variables / `.env` (see `.env.example`).
 | --------------------- | ------------------------------------ | ---------------------------------------- |
 | `SECRET_KEY`          | `change-me-please`                   | JWT signing key — **set this**.          |
 | `DATABASE_URL`        | `sqlite+aiosqlite:///./docuchat.db`  | Async SQLAlchemy URL.                    |
-| `ANTHROPIC_API_KEY`   | _(none)_                             | Required for chat answers.               |
-| `CHAT_MODEL`          | `claude-sonnet-5`                    | Claude model id.                         |
+| `LLM_API_KEY`         | _(none)_                             | Key for any OpenAI-compatible provider.  |
+| `LLM_BASE_URL`        | `https://api.justwoker.icu/v1`       | OpenAI-compatible API base URL.          |
+| `LLM_MODEL`           | `gpt-4o-mini`                        | Model id served by your provider.        |
 | `USE_FAKE_EMBEDDINGS` | `0`                                  | `1` = deterministic embeddings (tests).  |
+| `USE_FAKE_LLM`        | `0`                                  | `1` = extractive keyless answers (demo). |
 | `EMBED_MODEL`         | `BAAI/bge-small-en-v1.5`             | fastembed model name.                    |
 | `FREE_MAX_DOCUMENTS`  | `5`                                  | Free-plan document cap.                  |
 | `FREE_DAILY_QUESTIONS`| `25`                                 | Free-plan questions per day.             |

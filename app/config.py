@@ -16,11 +16,16 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./docuchat.db"
 
-    # LLM
-    anthropic_api_key: str | None = None
-    chat_model: str = "claude-sonnet-5"
+    # LLM (OpenAI-compatible: works with any provider/gateway that speaks the
+    # OpenAI API — OpenAI, Groq, Together, OpenRouter, a local server, etc.)
+    llm_api_key: str | None = None
+    llm_base_url: str = "https://api.justwoker.icu/v1"
+    llm_model: str = "gpt-4o-mini"
     max_context_chunks: int = 6
     max_answer_tokens: int = 1024
+    # Keyless demo answers: assemble a cited answer from the retrieved passages
+    # instead of calling the model (used by the public Render demo).
+    use_fake_llm: bool = False
 
     # Embeddings
     use_fake_embeddings: bool = False

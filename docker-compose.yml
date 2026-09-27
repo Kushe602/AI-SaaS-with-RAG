@@ -25,8 +25,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://docuchat:docuchat@db:5432/docuchat
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CHAT_MODEL: ${CHAT_MODEL:-claude-sonnet-5}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.justwoker.icu/v1}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       USE_FAKE_EMBEDDINGS: ${USE_FAKE_EMBEDDINGS:-0}
 
 volumes:

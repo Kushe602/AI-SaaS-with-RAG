@@ -1,4 +1,4 @@
-"""LLM answer generation with Claude, grounded in retrieved context (RAG)."""
+"""Answer generation with an OpenAI-compatible model, grounded in retrieved context (RAG)."""
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Sequence
@@ -23,25 +23,88 @@ def build_context(chunks: Sequence[Chunk]) -> str:
 
 
 async def stream_answer(question: str, chunks: Sequence[Chunk]) -> AsyncIterator[str]:
-    """Yield the answer token-by-token from Claude, grounded in ``chunks``."""
-    if not settings.anthropic_api_key:
+    """Yield the answer token-by-token, grounded in ``chunks``.
+
+    With ``USE_FAKE_LLM`` set — the keyless demo deployment — the answer is
+    assembled extractively from the retrieved passages, so the full
+    upload → retrieve → cited-answer flow works live without an API key.
+    Otherwise an OpenAI-compatible model generates it (any provider/gateway
+    speaking the OpenAI API — configure ``LLM_BASE_URL`` / ``LLM_API_KEY`` /
+    ``LLM_MODEL``); with neither a key nor demo mode we return a gentle notice.
+    """
+    if settings.use_fake_llm:
+        async for piece in _stream_demo_answer(question, chunks):
+            yield piece
+        return
+
+    if not settings.llm_api_key:
         yield (
-            "⚠️ No ANTHROPIC_API_KEY is configured, so I can't generate an answer. "
-            "Add your key to the .env file to enable chat."
+            "⚠️ No LLM_API_KEY is configured, so I can't generate an answer. "
+            "Add an API key for any OpenAI-compatible provider to the .env file "
+            "to enable chat."
         )
         return
 
-    from anthropic import AsyncAnthropic
+    from openai import AsyncOpenAI
 
-    client = AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = AsyncOpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
     context = build_context(chunks) or "(no relevant passages found)"
     user_message = f"Context passages:\n{context}\n\nQuestion: {question}"
 
-    async with client.messages.stream(
-        model=settings.chat_model,
+    stream = await client.chat.completions.create(
+        model=settings.llm_model,
         max_tokens=settings.max_answer_tokens,
-        system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_message}],
-    ) as stream:
-        async for text in stream.text_stream:
-            yield text
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+        stream=True,
+    )
+    async for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta
+
+
+async def _emit_words(text: str) -> AsyncIterator[str]:
+    """Yield ``text`` word-by-word so the client renders an incremental stream."""
+    for word in text.split(" "):
+        yield word + " "
+
+
+async def _stream_demo_answer(question: str, chunks: Sequence[Chunk]) -> AsyncIterator[str]:
+    """Deterministic, keyless answer for the public demo.
+
+    Streams a short extractive answer built from the top retrieved passages, with
+    the same bracketed citations the real model is prompted to use — enough to
+    show grounded, cited retrieval end-to-end and exercise the streaming UI.
+    """
+    if not chunks:
+        async for piece in _emit_words(
+            "I couldn't find anything in your documents to answer that. "
+            "Upload a document first, then ask about its contents. "
+            "(Demo mode: answers are assembled without a live model.)"
+        ):
+            yield piece
+        return
+
+    async for piece in _emit_words(
+        f'Here is what your documents say about "{question.strip()}":\n\n'
+    ):
+        yield piece
+
+    for i, chunk in enumerate(chunks[: settings.max_context_chunks], start=1):
+        snippet = " ".join(chunk.content.split())
+        if len(snippet) > 300:
+            snippet = snippet[:300].rstrip() + "…"
+        async for piece in _emit_words(f"- {snippet} [{i}]\n"):
+            yield piece
+
+    async for piece in _emit_words(
+        "\n_Demo mode: this answer is assembled directly from the passages "
+        "retrieved from your documents. Set an LLM_API_KEY to get fully "
+        "synthesized answers._"
+    ):
+        yield piece
