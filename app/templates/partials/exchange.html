@@ -6,7 +6,9 @@
        class="bubble stream-pending border border-slate-200 bg-white text-slate-800"
        data-cid="{{ conversation_id }}"
        data-mid="{{ assistant_id }}">
-    <div class="js-content whitespace-pre-wrap"></div>
+    <div class="js-answer prose-answer" data-mid="{{ assistant_id }}">
+      <span class="js-cursor text-slate-400">▍</span>
+    </div>
     <div class="js-sources"></div>
   </div>
 </div>

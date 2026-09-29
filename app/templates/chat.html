@@ -6,6 +6,10 @@
     <div class="flex items-center gap-4">
       <a href="/app" class="text-sm font-medium text-slate-500 hover:text-slate-900">← Dashboard</a>
       <span class="font-semibold">{{ conversation.title }}</span>
+      {% if scope_label %}
+      <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500"
+            title="Retrieval for this chat is scoped to these documents">🔎 {{ scope_label }}</span>
+      {% endif %}
     </div>
     <button hx-post="/chat/new" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">+ New chat</button>
   </header>
@@ -40,25 +44,118 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<style>
+  .prose-answer p { margin: 0 0 0.5rem; }
+  .prose-answer p:last-child { margin-bottom: 0; }
+  .prose-answer ul { list-style: disc; padding-left: 1.25rem; margin: 0.25rem 0 0.5rem; }
+  .prose-answer ol { list-style: decimal; padding-left: 1.25rem; margin: 0.25rem 0 0.5rem; }
+  .prose-answer h1, .prose-answer h2, .prose-answer h3 { font-weight: 600; margin: 0.5rem 0 0.25rem; }
+  .prose-answer code { background: #f1f5f9; padding: 0.1rem 0.3rem; border-radius: 0.25rem; font-size: 0.85em; }
+  .prose-answer pre { background: #f1f5f9; padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; }
+  .prose-answer a.cite { color: #4f46e5; font-weight: 600; text-decoration: none; cursor: pointer; }
+  .prose-answer a.cite:hover { text-decoration: underline; }
+</style>
 <script>
+  function renderMarkdown(raw) {
+    if (window.marked && window.DOMPurify) {
+      return DOMPurify.sanitize(marked.parse(raw || '', { breaks: true }));
+    }
+    var d = document.createElement('div');
+    d.textContent = raw || '';
+    return d.innerHTML.replace(/\n/g, '<br>');
+  }
+
+  function onCiteClick(e) {
+    e.preventDefault();
+    var target = document.getElementById('src-' + this.dataset.mid + '-' + this.dataset.n);
+    if (!target) return;
+    var passage = target.querySelector('.js-passage');
+    if (passage) passage.classList.remove('hidden');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('bg-amber-100');
+    setTimeout(function () { target.classList.remove('bg-amber-100'); }, 1600);
+  }
+
+  // Turn each [n] in a rendered answer into a link to its source passage.
+  function linkifyCitations(container, mid) {
+    if (!container) return;
+    var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+    var nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function (node) {
+      if (node.parentElement && node.parentElement.classList.contains('cite')) return;
+      var text = node.nodeValue;
+      if (!/\[\d+\]/.test(text)) return;
+      var frag = document.createDocumentFragment();
+      var last = 0, re = /\[(\d+)\]/g, m;
+      while ((m = re.exec(text))) {
+        if (m.index > last) frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+        var a = document.createElement('a');
+        a.href = '#src-' + mid + '-' + m[1];
+        a.className = 'cite';
+        a.textContent = '[' + m[1] + ']';
+        a.dataset.mid = mid;
+        a.dataset.n = m[1];
+        a.addEventListener('click', onCiteClick);
+        frag.appendChild(a);
+        last = re.lastIndex;
+      }
+      if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+      node.parentNode.replaceChild(frag, node);
+    });
+  }
+  /* CHAT_SCRIPTS_PLACEHOLDER */
   function scrollMessages() {
     var box = document.getElementById('messages');
     if (box) box.scrollTop = box.scrollHeight;
   }
+
+  // Render already-persisted assistant messages (page load / history) as markdown.
+  function initPersisted() {
+    document.querySelectorAll('.js-render').forEach(function (el) {
+      if (el.dataset.rendered) return;
+      el.dataset.rendered = '1';
+      var src = el.parentElement.querySelector('.js-md-src');
+      el.innerHTML = renderMarkdown(src ? src.textContent : '');
+      linkifyCitations(el, el.dataset.mid);
+    });
+  }
+
+  // Open an SSE stream for each freshly-created assistant bubble and render live.
   function initStreams() {
     document.querySelectorAll('.stream-pending').forEach(function (el) {
       el.classList.remove('stream-pending');
       var cid = el.dataset.cid, mid = el.dataset.mid;
-      var content = el.querySelector('.js-content');
+      var answer = el.querySelector('.js-answer');
       var sources = el.querySelector('.js-sources');
+      var raw = '';
       var es = new EventSource('/chat/' + cid + '/stream/' + mid);
-      es.addEventListener('token', function (e) { content.textContent += JSON.parse(e.data); scrollMessages(); });
-      es.addEventListener('sources', function (e) { sources.innerHTML = JSON.parse(e.data); scrollMessages(); });
-      es.addEventListener('done', function () { es.close(); });
+      es.addEventListener('token', function (e) {
+        raw += JSON.parse(e.data);
+        answer.innerHTML = renderMarkdown(raw);
+        scrollMessages();
+      });
+      es.addEventListener('sources', function (e) {
+        sources.innerHTML = JSON.parse(e.data);
+        linkifyCitations(answer, mid);
+        scrollMessages();
+      });
+      es.addEventListener('done', function () {
+        answer.innerHTML = renderMarkdown(raw);
+        linkifyCitations(answer, mid);
+        es.close();
+      });
       es.onerror = function () { es.close(); };
     });
   }
-  document.body.addEventListener('htmx:afterSwap', function () { initStreams(); scrollMessages(); });
-  window.addEventListener('load', scrollMessages);
+
+  document.body.addEventListener('htmx:afterSwap', function () {
+    initPersisted(); initStreams(); scrollMessages();
+  });
+  window.addEventListener('load', function () {
+    initPersisted(); scrollMessages();
+  });
 </script>
 {% endblock %}

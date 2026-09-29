@@ -1,0 +1,16 @@
+{% if citations %}
+<div class="mt-2 border-t border-slate-100 pt-2 text-xs">
+  <p class="mb-1 font-semibold uppercase tracking-wide text-slate-400">Sources</p>
+  <ol class="space-y-1">
+    {% for c in citations %}
+    <li id="src-{{ mid }}-{{ c.n }}" class="scroll-mt-4 rounded-md px-1 py-0.5 transition-colors duration-500">
+      <span class="font-medium text-slate-600">[{{ c.n }}] {{ c.filename }}</span>
+      <span class="text-slate-400">— {{ c.snippet }}…</span>
+      {% if c.passage %}
+      <p class="js-passage mt-1 hidden whitespace-pre-wrap rounded bg-slate-50 p-2 leading-relaxed text-slate-600">{{ c.passage }}</p>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</div>
+{% endif %}

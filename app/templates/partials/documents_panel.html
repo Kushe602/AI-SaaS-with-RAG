@@ -27,13 +27,21 @@
         <p class="truncate text-sm font-medium text-slate-800">{{ doc.filename }}</p>
         <p class="text-xs text-slate-400">{{ doc.num_chunks }} chunks</p>
       </div>
-      <button hx-post="/documents/{{ doc.id }}/delete"
-              hx-target="#documents-panel"
-              hx-swap="outerHTML"
-              hx-confirm="Delete this document?"
-              class="rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50">
-        Delete
-      </button>
+      <div class="flex items-center gap-1">
+        <button hx-get="/documents/{{ doc.id }}/chunks"
+                hx-target="#chunk-viewer"
+                hx-swap="innerHTML"
+                class="rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100">
+          View
+        </button>
+        <button hx-post="/documents/{{ doc.id }}/delete"
+                hx-target="#documents-panel"
+                hx-swap="outerHTML"
+                hx-confirm="Delete this document?"
+                class="rounded-lg px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50">
+          Delete
+        </button>
+      </div>
     </li>
     {% else %}
     <li class="py-6 text-center text-sm text-slate-400">No documents yet. Upload a PDF or text file.</li>

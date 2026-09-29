@@ -1,4 +1,6 @@
 """HTML page routes (landing, dashboard, chat)."""
+import json
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import select
@@ -86,6 +88,21 @@ async def chat_page(
             .order_by(Conversation.created_at.desc())
         )).scalars().all()
     )
+
+    # Resolve the conversation's document scope for the header badge.
+    scope_ids = json.loads(conversation.document_ids or "[]")
+    if scope_ids:
+        names = (
+            await db.execute(
+                select(Document.filename).where(
+                    Document.owner_id == user.id, Document.id.in_(scope_ids)
+                )
+            )
+        ).scalars().all()
+        scope_label = f"{len(names)} document" + ("" if len(names) == 1 else "s")
+    else:
+        scope_label = "All documents"
+
     return templates.TemplateResponse(
         request,
         "chat.html",
@@ -94,6 +111,7 @@ async def chat_page(
             "conversation": conversation,
             "messages": messages,
             "conversations": conversations,
+            "scope_label": scope_label,
         },
     )
 

@@ -74,6 +74,8 @@ class Conversation(Base):
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
     owner_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     title: Mapped[str] = mapped_column(String(200), default="New chat")
+    # JSON list of Document ids this chat is scoped to; empty ("[]") means "all documents".
+    document_ids: Mapped[str] = mapped_column(Text, default="[]")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     owner: Mapped["User"] = relationship(back_populates="conversations")

@@ -27,11 +27,32 @@
   <section>
     <div class="mb-3 flex items-center justify-between">
       <h2 class="text-lg font-semibold">Conversations</h2>
-      <button hx-post="/chat/new"
-              class="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500">
+    </div>
+
+    <form hx-post="/chat/new" class="mb-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+      {% if documents %}
+      <details class="mb-2">
+        <summary class="cursor-pointer select-none text-sm font-medium text-slate-600">
+          Scope to documents <span class="text-slate-400">(optional)</span>
+        </summary>
+        <p class="mt-1 text-xs text-slate-400">Leave all unchecked to search every document.</p>
+        <div class="mt-2 max-h-40 space-y-1 overflow-y-auto pr-1">
+          {% for doc in documents %}
+          <label class="flex items-center gap-2 rounded-md px-1 py-0.5 text-sm text-slate-700 hover:bg-slate-50">
+            <input type="checkbox" name="document_ids" value="{{ doc.id }}"
+                   class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+            <span class="truncate">{{ doc.filename }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
+      <button type="submit"
+              class="w-full rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
         + New chat
       </button>
-    </div>
+    </form>
+
     <div class="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
       {% if conversations %}
         <ul class="divide-y divide-slate-100">
@@ -49,4 +70,7 @@
     </div>
   </section>
 </main>
+
+<!-- Injected by HTMX when viewing a document's chunks -->
+<div id="chunk-viewer"></div>
 {% endblock %}

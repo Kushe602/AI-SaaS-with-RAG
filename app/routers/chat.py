@@ -1,6 +1,5 @@
 """Chat routes: create conversations, ask questions, stream grounded answers (SSE)."""
 import json
-from html import escape
 
 from fastapi import APIRouter, Depends, Form, Request, Response, status
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -22,24 +21,27 @@ def _sse(event: str, data: str) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
-def _render_sources(citations: list[dict]) -> str:
-    if not citations:
-        return ""
-    items = "".join(
-        f'<li><span class="font-medium text-slate-600">[{c["n"]}] {escape(c["filename"])}</span> '
-        f'<span class="text-slate-400">— {escape(c["snippet"])}…</span></li>'
-        for c in citations
-    )
-    return (
-        '<div class="mt-2 border-t border-slate-100 pt-2 text-xs">'
-        '<p class="mb-1 font-semibold uppercase tracking-wide text-slate-400">Sources</p>'
-        f'<ol class="space-y-1">{items}</ol></div>'
-    )
-
-
 @router.post("/new")
-async def new_conversation(user=Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    conversation = Conversation(owner_id=user.id, title="New chat")
+async def new_conversation(
+    document_ids: list[str] = Form(default=[]),
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Keep only ids that are real documents owned by this user; empty = search all.
+    scope: list[str] = []
+    if document_ids:
+        owned = (
+            await db.execute(
+                select(Document.id).where(
+                    Document.owner_id == user.id, Document.id.in_(document_ids)
+                )
+            )
+        ).scalars().all()
+        scope = list(owned)
+
+    conversation = Conversation(
+        owner_id=user.id, title="New chat", document_ids=json.dumps(scope)
+    )
     db.add(conversation)
     await db.commit()
     await db.refresh(conversation)
@@ -118,16 +120,35 @@ async def stream(conversation_id: str, message_id: str, user=Depends(get_current
                 yield _sse("done", "1")
                 return
 
-            question_row = (
+            # Load the full conversation so we can carry prior turns as context.
+            messages = (
                 (await db.execute(
                     select(Message)
-                    .where(Message.conversation_id == conversation_id, Message.role == "user")
-                    .order_by(Message.created_at.desc())
-                )).scalars().first()
+                    .where(Message.conversation_id == conversation_id)
+                    .order_by(Message.created_at)
+                )).scalars().all()
             )
-            question = question_row.content if question_row else ""
+            user_messages = [m for m in messages if m.role == "user"]
+            question = user_messages[-1].content if user_messages else ""
+            cutoff = user_messages[-1].created_at if user_messages else None
+            history = [
+                (m.role, m.content)
+                for m in messages
+                if cutoff is not None and m.created_at < cutoff and m.content.strip()
+            ]
+            prior_questions = [content for role, content in history if role == "user"]
 
-            scored = await retrieval.search(db, user.id, question, settings.max_context_chunks)
+            # Scope retrieval to the conversation's chosen documents (empty = all),
+            # and fold recent turns into the query so follow-ups resolve.
+            scope = json.loads(conversation.document_ids or "[]")
+            search_query = retrieval.condense_query(prior_questions, question)
+            scored = await retrieval.search(
+                db,
+                user.id,
+                search_query,
+                settings.max_context_chunks,
+                document_ids=scope or None,
+            )
             chunks = [chunk for chunk, _ in scored]
 
             filenames: dict[str, str] = {}
@@ -139,7 +160,7 @@ async def stream(conversation_id: str, message_id: str, user=Depends(get_current
                 filenames = {d.id: d.filename for d in rows}
 
             pieces: list[str] = []
-            async for token in llm.stream_answer(question, chunks):
+            async for token in llm.stream_answer(question, chunks, history=history):
                 pieces.append(token)
                 yield _sse("token", token)
 
@@ -147,12 +168,15 @@ async def stream(conversation_id: str, message_id: str, user=Depends(get_current
                 {
                     "n": i + 1,
                     "filename": filenames.get(c.document_id, "document"),
-                    "snippet": c.content[:200],
+                    "snippet": " ".join(c.content.split())[:200],
+                    "passage": " ".join(c.content.split())[:1200],
                 }
                 for i, c in enumerate(chunks)
             ]
-            sources_html = _render_sources(citations)
-            if sources_html:
+            if citations:
+                sources_html = templates.env.get_template("partials/sources.html").render(
+                    citations=citations, mid=message_id
+                )
                 yield _sse("sources", sources_html)
 
             assistant.content = "".join(pieces)

@@ -24,10 +24,13 @@ DocuChat is a full-stack, production-shaped web application built with **FastAPI
 
 - **Account system** — registration, login, and logout with hashed passwords (bcrypt) and JWT session cookies.
 - **Document ingestion** — upload PDFs / text files; the app extracts text, chunks it, and embeds each chunk.
-- **Semantic retrieval (RAG)** — questions are embedded and matched against document chunks by cosine similarity.
-- **Streaming answers** — responses stream token-by-token over Server-Sent Events, with inline `[n]` citations.
+- **Hybrid retrieval (RAG)** — questions are matched by semantic cosine similarity **blended with a keyword/TF score**, then reranked with **MMR** for diverse, non-redundant context.
+- **Per-conversation document scoping** — scope a chat to a chosen subset of your documents (default: all); retrieval only searches those.
+- **Multi-turn follow-ups** — prior turns are condensed into the retrieval query and carried into the answer prompt, so follow-up questions resolve in context.
+- **Streaming answers with clickable citations** — responses stream token-by-token over Server-Sent Events, rendered as **Markdown**; each inline `[n]` is clickable and scrolls to (and reveals) the exact source passage.
+- **Document management** — view a document's extracted chunks in-app and delete a document (cascading its chunks).
 - **Usage metering & plans** — per-user document and daily-question limits (free / pro tiers), ready for Stripe.
-- **Fully tested** — a `pytest` suite covering auth, ingestion, retrieval, and the end-to-end chat flow.
+- **Fully tested** — a `pytest` suite covering auth, ingestion, hybrid/MMR retrieval, scoping, multi-turn, document management, and the end-to-end chat flow.
 - **Containerized** — one-command run with Docker Compose (FastAPI + Postgres), plus GitHub Actions CI.
 
 ---
@@ -138,6 +141,8 @@ All settings are read from environment variables / `.env` (see `.env.example`).
 | `USE_FAKE_EMBEDDINGS` | `0`                                  | `1` = deterministic embeddings (tests).  |
 | `USE_FAKE_LLM`        | `0`                                  | `1` = extractive keyless answers (demo). |
 | `EMBED_MODEL`         | `BAAI/bge-small-en-v1.5`             | fastembed model name.                    |
+| `HYBRID_ALPHA`        | `0.5`                                | Semantic vs. keyword weight in ranking.  |
+| `MMR_LAMBDA`          | `0.6`                                | MMR relevance vs. diversity trade-off.   |
 | `FREE_MAX_DOCUMENTS`  | `5`                                  | Free-plan document cap.                  |
 | `FREE_DAILY_QUESTIONS`| `25`                                 | Free-plan questions per day.             |
 
@@ -177,7 +182,7 @@ tests/                 # pytest suite
 
 This project favors a **zero-setup default** so it runs and tests anywhere, while keeping clear seams for production upgrades:
 
-- **Vector search** — retrieval ranks chunks with NumPy cosine similarity in-process (`app/services/retrieval.py`). This is simple and dependency-free. For large corpora, store embeddings in a `pgvector` column and replace the body of `search()` with an `ORDER BY embedding <=> :query` query — the Postgres + `pgvector` image is already wired up in `docker-compose.yml`.
+- **Vector search** — retrieval blends NumPy cosine similarity with a keyword/TF score and reranks with MMR for diversity, all in-process (`app/services/retrieval.py`). This is simple and dependency-free. For large corpora, store embeddings in a `pgvector` column and replace the semantic step with an `ORDER BY embedding <=> :query` query — the Postgres + `pgvector` image is already wired up in `docker-compose.yml`.
 - **Billing** — usage metering and plan limits are fully implemented (`app/services/usage.py`). To monetize, wire Stripe Checkout + webhooks to flip `User.plan` between `free` and `pro`; the limits then apply automatically.
 - **Migrations** — tables are created on startup via `create_all` for convenience. A production deployment should manage schema with Alembic.
 - **Embeddings** — the `Embedder` interface makes the backend swappable (local fastembed, a hosted embeddings API, etc.) without touching the pipeline.
@@ -187,9 +192,13 @@ This project favors a **zero-setup default** so it runs and tests anywhere, whil
 
 - [ ] pgvector-backed retrieval behind the existing `search()` seam
 - [ ] Stripe billing for the pro plan
-- [ ] Multi-file conversations & document scoping per chat
+- [x] Multi-file conversations & document scoping per chat
 - [ ] Alembic migrations
-- [ ] Markdown rendering of answers
+- [x] Markdown rendering of answers
+- [x] Hybrid (semantic + keyword) retrieval with MMR reranking
+- [x] Multi-turn follow-up questions
+- [x] Clickable citations that reveal the source passage
+- [x] In-app document chunk viewer
 
 ## 📝 License
 

@@ -1,0 +1,25 @@
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+     onclick="if(event.target===this) this.remove();">
+  <div class="absolute inset-0 bg-slate-900/40"></div>
+  <div class="relative flex max-h-[80vh] w-full max-w-2xl flex-col rounded-2xl border border-slate-200 bg-white shadow-xl">
+    <div class="flex items-start justify-between border-b border-slate-100 px-5 py-4">
+      <div class="min-w-0">
+        <h3 class="truncate text-base font-semibold text-slate-900">{{ document.filename }}</h3>
+        <p class="text-xs text-slate-400">{{ chunks | length }} chunk{{ '' if chunks | length == 1 else 's' }} · embedded for retrieval</p>
+      </div>
+      <button type="button"
+              onclick="this.closest('.fixed').remove();"
+              class="rounded-lg px-2 py-1 text-sm font-medium text-slate-500 hover:bg-slate-100">Close</button>
+    </div>
+    <div class="space-y-3 overflow-y-auto px-5 py-4">
+      {% for chunk in chunks %}
+      <div class="rounded-lg border border-slate-100 bg-slate-50 p-3">
+        <p class="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-400">Chunk {{ chunk.chunk_index + 1 }}</p>
+        <p class="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{{ chunk.content }}</p>
+      </div>
+      {% else %}
+      <p class="py-6 text-center text-sm text-slate-400">This document has no chunks.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
