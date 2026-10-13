@@ -52,7 +52,9 @@ class UserLLMConfig(Base):
     model: Mapped[str] = mapped_column(String(200), default="gpt-4o-mini")
     encrypted_api_key: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
 
     owner: Mapped["User"] = relationship(back_populates="llm_config")
 
