@@ -5,7 +5,7 @@ from fastapi import FastAPI
 
 from app.config import settings
 from app.database import init_db
-from app.routers import auth, chat, documents, pages
+from app.routers import api_config, auth, chat, documents, pages
 
 
 @asynccontextmanager
@@ -20,6 +20,7 @@ app.include_router(pages.router)
 app.include_router(auth.router)
 app.include_router(documents.router)
 app.include_router(chat.router)
+app.include_router(api_config.router)
 
 
 @app.get("/healthz", include_in_schema=False)
