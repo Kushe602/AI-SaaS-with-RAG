@@ -97,7 +97,10 @@ def test_workflow_query_expands_to_project_pipeline_terms():
         "give me the flow of project",
         [
             "The project overview explains the business goal.",
-            "Document upload, text extraction, chunking, embedding, retrieval, and answer generation form the workflow pipeline.",
+            (
+                "Document upload, text extraction, chunking, embedding, retrieval, "
+                "and answer generation form the workflow pipeline."
+            ),
             "Dashboard panels show correlation and machine learning metrics.",
         ],
     )
