@@ -46,8 +46,18 @@ async def dashboard(
         )).scalars().all()
     )
     stats = await _usage_stats(db, user)
-    saved_api_config = (await db.execute(select(UserLLMConfig).where(UserLLMConfig.owner_id == user.id))).scalar_one_or_none()
-    api_config = {"provider": saved_api_config.provider, "base_url": saved_api_config.base_url, "model": saved_api_config.model} if saved_api_config else None
+    saved_api_config = (
+        await db.execute(
+            select(UserLLMConfig).where(UserLLMConfig.owner_id == user.id)
+        )
+    ).scalar_one_or_none()
+    api_config = None
+    if saved_api_config:
+        api_config = {
+            "provider": saved_api_config.provider,
+            "base_url": saved_api_config.base_url,
+            "model": saved_api_config.model,
+        }
     return templates.TemplateResponse(
         request,
         "dashboard.html",
