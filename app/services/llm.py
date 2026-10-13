@@ -121,7 +121,11 @@ async def _stream_demo_answer(
         return
 
     async for piece in _emit_words(
-        f'Here are the most relevant passages for **{question.strip()}**:\n\n'
+        "This deployment is running in extractive demo mode, so it cannot synthesize "
+        "a reliable explanation from the document. Below are the passages that matched "
+        f"**{question.strip()}**. Check the citations before relying on them. "
+        "For a direct, synthesized answer, configure an LLM_API_KEY and disable "
+        "USE_FAKE_LLM.\n\n"
     ):
         yield piece
 
