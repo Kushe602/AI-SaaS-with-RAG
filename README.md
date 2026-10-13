@@ -18,6 +18,9 @@ DocuChat is a full-stack, production-shaped web application built with **FastAPI
 <!-- Replace with a real screenshot or GIF once you deploy: it's the first thing recruiters look at. -->
 <!-- ![DocuChat screenshot](docs/screenshot.png) -->
 
+
+> **Interface notes:** [UI guide](docs/UI_GUIDE.md) · [Live demo](https://docuchat-94mn.onrender.com). The guide describes the current screens and a practical verification checklist.
+
 ---
 
 ## ✨ Features
