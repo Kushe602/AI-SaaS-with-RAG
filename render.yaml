@@ -1,6 +1,5 @@
-# Render Blueprint — one-click deploy of DocuChat in its keyless demo mode.
-# In the Render dashboard: New + → Blueprint, connect this repo, and Render
-# reads this file, builds the Dockerfile, and provisions the service below.
+# Render Blueprint — DocuChat with OpenAI-backed answers.
+# Add LLM_API_KEY in the Render dashboard's Environment settings.
 services:
   - type: web
     name: docuchat
@@ -8,20 +7,20 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
-    autoDeploy: true          # redeploy on every push to the default branch
+    autoDeploy: true
     envVars:
-      # Signs JWT session cookies — Render generates a strong random value once.
       - key: SECRET_KEY
         generateValue: true
-      # Keep the free Render instance lightweight: loading ONNX/FastEmbed on the
-      # first upload can exhaust memory and cause the request to return 502.
-      # Use deterministic local embeddings here; semantic embeddings need a
-      # service with enough memory and should be enabled only after load testing.
+      # Keep the free Render instance lightweight. These hashed embeddings are
+      # lexical-only, so retrieval includes intent-aware keyword expansion.
       - key: USE_FAKE_EMBEDDINGS
         value: "true"
-      # Assemble cited answers from the retrieved passages instead of calling
-      #   the model, so the upload → retrieve → answer flow runs live with no key.
+      # Do not silently serve extractive demo answers. A missing API key should
+      # produce a clear setup notice instead of misleading passage dumps.
       - key: USE_FAKE_LLM
-        value: "true"
-      # No DATABASE_URL → default SQLite (ephemeral on the free plan: uploaded
-      #   docs reset when the instance sleeps/redeploys — fine for a demo).
+        value: "false"
+      - key: LLM_BASE_URL
+        value: "https://api.openai.com/v1"
+      - key: LLM_MODEL
+        value: "gpt-4o-mini"
+      # No DATABASE_URL → default SQLite (ephemeral on the free plan).
