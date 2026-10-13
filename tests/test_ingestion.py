@@ -39,7 +39,11 @@ async def test_ingest_document_service_directly():
 
 def test_extract_text_rejects_unsupported_file_type():
     with pytest.raises(DocumentIngestionError, match="Unsupported file type"):
-        extract_text("notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"content")
+        extract_text(
+            "notes.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            b"content",
+        )
 
 
 def test_extract_text_rejects_empty_text_file():
