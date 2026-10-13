@@ -13,7 +13,9 @@
   </div>
 </header>
 
-<main class="mx-auto grid max-w-6xl gap-6 px-6 py-8 lg:grid-cols-2">
+<main class="mx-auto max-w-6xl px-6 py-8">
+  {% include "partials/api_config_panel.html" %}
+  <div class="grid gap-6 lg:grid-cols-2">
   <!-- Documents -->
   <section>
     <h2 class="mb-3 text-lg font-semibold">Your documents</h2>
@@ -69,6 +71,7 @@
       {% endif %}
     </div>
   </section>
+  </div>
 </main>
 
 <!-- Injected by HTMX when viewing a document's chunks -->

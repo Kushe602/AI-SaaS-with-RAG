@@ -9,8 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import SessionLocal, get_db
 from app.dependencies import get_current_user
-from app.models import Conversation, Document, Message
+from app.models import Conversation, Document, Message, UserLLMConfig
 from app.services import llm, retrieval, usage
+from app.services.user_llm_config import effective_config
 from app.web import templates
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -160,7 +161,13 @@ async def stream(conversation_id: str, message_id: str, user=Depends(get_current
                 filenames = {d.id: d.filename for d in rows}
 
             pieces: list[str] = []
-            async for token in llm.stream_answer(question, chunks, history=history):
+            saved_config = (await db.execute(
+                select(UserLLMConfig).where(UserLLMConfig.owner_id == user.id)
+            )).scalar_one_or_none()
+            provider_config = effective_config(saved_config)
+            async for token in llm.stream_answer(
+                question, chunks, history=history, provider_config=provider_config
+            ):
                 pieces.append(token)
                 yield _sse("token", token)
 

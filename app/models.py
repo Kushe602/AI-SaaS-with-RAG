@@ -33,6 +33,30 @@ class User(Base):
     conversations: Mapped[list["Conversation"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
+    llm_config: Mapped["UserLLMConfig | None"] = relationship(
+        back_populates="owner", cascade="all, delete-orphan", uselist=False
+    )
+
+
+class UserLLMConfig(Base):
+    """One user's OpenAI-compatible API settings; the key is encrypted at rest."""
+
+    __tablename__ = "user_llm_configs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    owner_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    provider: Mapped[str] = mapped_column(String(100), default="OpenAI")
+    base_url: Mapped[str] = mapped_column(String(500), default="https://api.openai.com/v1")
+    model: Mapped[str] = mapped_column(String(200), default="gpt-4o-mini")
+    encrypted_api_key: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_now, onupdate=_now
+    )
+
+    owner: Mapped["User"] = relationship(back_populates="llm_config")
 
 
 class Document(Base):
