@@ -1,12 +1,8 @@
 """Vector retrieval over a user's document chunks.
 
-Ranking blends semantic cosine similarity with a lightweight keyword/TF score
-(hybrid retrieval), then reranks the top candidates with Maximal Marginal
-Relevance (MMR) for diversity. Everything runs in-process with NumPy, so it needs
-no external services and is fully deterministic under the fake embeddings used in
-tests. For large corpora, swap the body of ``search`` for a pgvector query (store
-the embedding in a ``vector`` column and order by the ``<=>`` distance operator);
-the call site only depends on the ``search`` signature below.
+Ranking blends semantic cosine similarity with a lightweight keyword/TF score,
+then reranks candidates with Maximal Marginal Relevance (MMR). Demo-mode hashing
+embeddings are not semantic, so retrieval uses lexical evidence only.
 """
 from __future__ import annotations
 
@@ -30,11 +26,15 @@ _STOP_WORDS = {
     "show", "tell", "that", "the", "their", "this", "to", "was", "we", "what",
     "when", "where", "which", "who", "why", "will", "with", "would", "you",
 }
+_FLOW_TERMS = {
+    "workflow", "process", "step", "stage", "sequence", "pipeline", "architecture",
+    "input", "output", "upload", "extract", "chunk", "embed", "index", "retrieve",
+    "generate", "answer", "citation", "user", "document", "query", "response",
+}
 
 
 def _tokenize(text: str) -> list[str]:
     tokens = _TOKEN_RE.findall(text.lower())
-    # Small deterministic normalization for common inflections.
     normalized = []
     for token in tokens:
         if token.endswith("ies") and len(token) > 4:
@@ -52,11 +52,7 @@ def _tokenize(text: str) -> list[str]:
 def condense_query(
     history_questions: Sequence[str], question: str, max_turns: int | None = None
 ) -> str:
-    """Fold the most recent user questions into the current one for retrieval.
-
-    A bare follow-up ("and its cost?") carries little signal alone; prefixing the
-    last few user turns gives retrieval the context to resolve it. Deterministic.
-    """
+    """Fold recent user questions into a follow-up query for retrieval."""
     if max_turns is None:
         max_turns = settings.history_turns
     recent = [q.strip() for q in history_questions if q and q.strip()][-max_turns:]
@@ -64,7 +60,7 @@ def condense_query(
 
 
 def _minmax(scores: np.ndarray) -> np.ndarray:
-    """Scale scores to [0, 1]. All-equal (or single-element) inputs map to all-ones."""
+    """Scale scores to [0, 1]. All-equal inputs map to all-ones."""
     if scores.size == 0:
         return scores
     lo = float(scores.min())
@@ -75,8 +71,12 @@ def _minmax(scores: np.ndarray) -> np.ndarray:
 
 
 def _keyword_scores(query: str, texts: Sequence[str]) -> np.ndarray:
-    """Return IDF-weighted query coverage, reducing the impact of boilerplate."""
-    query_terms = set(_tokenize(query)) - _STOP_WORDS
+    """Return weighted query coverage, with intent expansion for workflow questions."""
+    original_terms = set(_tokenize(query)) - _STOP_WORDS
+    query_terms = set(original_terms)
+    if {"flow", "workflow", "process", "pipeline", "architecture"} & original_terms:
+        query_terms.update(_FLOW_TERMS)
+
     scores = np.zeros(len(texts), dtype=np.float32)
     if not query_terms or not texts:
         return scores
@@ -86,13 +86,14 @@ def _keyword_scores(query: str, texts: Sequence[str]) -> np.ndarray:
     document_frequency = {
         term: sum(term in terms for terms in token_sets) for term in query_terms
     }
-    weights = {
-        term: np.log1p(
+    weights = {}
+    for term in query_terms:
+        idf = np.log1p(
             (count - document_frequency[term] + 0.5)
             / (document_frequency[term] + 0.5)
         )
-        for term in query_terms
-    }
+        # Preserve the user's literal terms; expansions are helpful but secondary.
+        weights[term] = idf * (2.0 if term in original_terms else 0.65)
     total_weight = sum(weights.values())
     if total_weight <= 0:
         return scores
@@ -107,12 +108,7 @@ def _keyword_scores(query: str, texts: Sequence[str]) -> np.ndarray:
 def _mmr_select(
     relevance: np.ndarray, sim_matrix: np.ndarray, top_k: int, lam: float
 ) -> list[int]:
-    """Maximal Marginal Relevance: trade off relevance against redundancy.
-
-    Greedily picks the most relevant item, then repeatedly the item maximizing
-    ``lam * relevance - (1 - lam) * max similarity to an already-picked item``.
-    Ties resolve to the lower index, so the result is deterministic.
-    """
+    """Select relevant, less-redundant candidates using Maximal Marginal Relevance."""
     n = int(relevance.shape[0])
     if n == 0 or top_k <= 0:
         return []
@@ -140,12 +136,7 @@ async def search(
     top_k: int,
     document_ids: Sequence[str] | None = None,
 ) -> list[tuple[Chunk, float]]:
-    """Return up to ``top_k`` (chunk, score) pairs, most relevant first.
-
-    Ranking blends raw cosine similarity with query-term coverage, removes weak
-    matches before MMR reranking, and then selects diverse relevant chunks.
-    ``document_ids`` scopes search to the owner's chosen documents.
-    """
+    """Return relevant chunks in rank order, optionally scoped to selected documents."""
     stmt = select(Chunk).where(Chunk.owner_id == owner_id)
     if document_ids:
         stmt = stmt.where(Chunk.document_id.in_(list(document_ids)))
@@ -160,13 +151,8 @@ async def search(
     query_norm = query_vec / (np.linalg.norm(query_vec) or 1.0)
     matrix_norm = matrix / (np.linalg.norm(matrix, axis=1, keepdims=True) + 1e-9)
     semantic = matrix_norm @ query_norm
-
     keyword = _keyword_scores(query, [c.content for c in chunks])
 
-    # Avoid normalizing against the current result set: that can make unrelated
-    # chunks look relevant when every candidate has a low score.
-    # Hashing embeddings are not semantic. In demo mode, rank only by lexical
-    # evidence rather than allowing hash collisions to promote unrelated chunks.
     if settings.use_fake_embeddings:
         combined = keyword
     else:
