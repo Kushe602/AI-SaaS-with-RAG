@@ -1,6 +1,6 @@
 """Tests for encryption of personal provider credentials."""
-from app.services.user_llm_config import decrypt_api_key, encrypt_api_key
 from app.models import UserLLMConfig
+from app.services.user_llm_config import decrypt_api_key, encrypt_api_key
 
 
 def test_api_key_encryption_round_trip():
