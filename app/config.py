@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     hybrid_alpha: float = 0.5  # weight of semantic cosine vs. keyword score (0..1)
     mmr_lambda: float = 0.6  # MMR: relevance (1.0) vs. diversity (0.0)
     retrieval_candidates: int = 20  # candidate pool size reranked by MMR
+    retrieval_min_score: float = 0.22  # discard weak matches before answer generation
     history_turns: int = 3  # prior user turns folded into the retrieval query
 
     # Chunking
