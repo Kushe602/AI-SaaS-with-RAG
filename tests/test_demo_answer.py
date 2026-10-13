@@ -51,3 +51,16 @@ async def test_fake_llm_omits_followup_without_history(monkeypatch):
 
     assert "Following up" not in out
 
+
+
+async def test_fake_llm_keeps_more_of_a_retrieved_passage(monkeypatch):
+    monkeypatch.setattr(llm.settings, "use_fake_llm", True)
+    passage = "Important detail " * 30 + "END_OF_PASSAGE"
+    chunks = [Chunk(content=passage)]
+
+    out = "".join(
+        [piece async for piece in llm.stream_answer("Summarize the passage", chunks)]
+    )
+
+    assert "END_OF_PASSAGE" in out
+    assert "[1]" in out
