@@ -33,6 +33,7 @@ async def stream_answer(
     question: str,
     chunks: Sequence[Chunk],
     history: Sequence[tuple[str, str]] | None = None,
+    provider_config: dict[str, str | None] | None = None,
 ) -> AsyncIterator[str]:
     """Yield a grounded answer. The model path requires a configured API key."""
     if settings.use_fake_llm:
@@ -44,7 +45,11 @@ async def stream_answer(
         yield "I couldn't find relevant passages in your documents to answer this question."
         return
 
-    if not settings.llm_api_key:
+    api_key = (provider_config or {}).get("api_key") or settings.llm_api_key
+    base_url = (provider_config or {}).get("base_url") or settings.llm_base_url
+    model = (provider_config or {}).get("model") or settings.llm_model
+
+    if not api_key:
         yield (
             "⚠️ OpenAI chat is not configured yet. Add LLM_API_KEY in the hosting "
             "service's environment settings (never in source code), then redeploy."
@@ -53,7 +58,7 @@ async def stream_answer(
 
     from openai import AsyncOpenAI
 
-    client = AsyncOpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
+    client = AsyncOpenAI(api_key=api_key, base_url=base_url)
     context = build_context(chunks)
     messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
     for role, text in history or []:
@@ -64,7 +69,7 @@ async def stream_answer(
     )
 
     stream = await client.chat.completions.create(
-        model=settings.llm_model,
+        model=model,
         max_tokens=settings.max_answer_tokens,
         messages=messages,
         stream=True,
