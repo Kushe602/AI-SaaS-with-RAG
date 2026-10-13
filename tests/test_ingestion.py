@@ -31,3 +31,46 @@ async def test_ingest_document_service_directly():
         )
         assert document.num_chunks > 1
         assert document.status == "ready"
+
+
+def test_extract_text_rejects_unsupported_file_type():
+    import pytest
+
+    from app.services.ingestion import DocumentIngestionError, extract_text
+
+    with pytest.raises(DocumentIngestionError, match="Unsupported file type"):
+        extract_text("notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"content")
+
+
+def test_extract_text_rejects_empty_text_file():
+    import pytest
+
+    from app.services.ingestion import DocumentIngestionError, extract_text
+
+    with pytest.raises(DocumentIngestionError, match="No readable text"):
+        extract_text("empty.txt", "text/plain", b"   \n\t")
+
+
+def test_extract_text_rejects_scanned_or_blank_pdf():
+    import io
+    import pytest
+    from pypdf import PdfWriter
+
+    from app.services.ingestion import DocumentIngestionError, extract_text
+
+    buffer = io.BytesIO()
+    writer = PdfWriter()
+    writer.add_blank_page(width=612, height=792)
+    writer.write(buffer)
+
+    with pytest.raises(DocumentIngestionError, match="No readable text"):
+        extract_text("blank.pdf", "application/pdf", buffer.getvalue())
+
+
+def test_extract_text_rejects_malformed_pdf():
+    import pytest
+
+    from app.services.ingestion import DocumentIngestionError, extract_text
+
+    with pytest.raises(DocumentIngestionError, match="PDF could not be read"):
+        extract_text("broken.pdf", "application/pdf", b"not a pdf")
