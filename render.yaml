@@ -13,11 +13,12 @@ services:
       # Signs JWT session cookies — Render generates a strong random value once.
       - key: SECRET_KEY
         generateValue: true
-      # Use semantic embeddings so paraphrases can retrieve relevant passages.
-      # The model downloads on first use; re-upload documents after changing this
-      # setting because vectors from fake and real embedding models are incompatible.
+      # Keep the free Render instance lightweight: loading ONNX/FastEmbed on the
+      # first upload can exhaust memory and cause the request to return 502.
+      # Use deterministic local embeddings here; semantic embeddings need a
+      # service with enough memory and should be enabled only after load testing.
       - key: USE_FAKE_EMBEDDINGS
-        value: "false"
+        value: "true"
       # Assemble cited answers from the retrieved passages instead of calling
       #   the model, so the upload → retrieve → answer flow runs live with no key.
       - key: USE_FAKE_LLM
