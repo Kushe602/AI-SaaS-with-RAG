@@ -1,7 +1,8 @@
 """Document management routes: upload, list, view chunks, delete."""
+from pathlib import PurePath
+
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import HTMLResponse
-from pathlib import PurePath
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -72,7 +73,10 @@ async def upload(
         await db.rollback()
         return await _render_panel(
             request, db, user,
-            error="The document could not be processed. Please retry with a smaller or different file.",
+            error=(
+                "The document could not be processed. Please retry with a "
+                "smaller or different file."
+            ),
         )
     return await _render_panel(request, db, user)
 
