@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import get_optional_user
-from app.models import Conversation, Document, Message
+from app.models import Conversation, Document, Message, UserLLMConfig
 from app.services import usage
 from app.web import templates
 
@@ -46,6 +46,8 @@ async def dashboard(
         )).scalars().all()
     )
     stats = await _usage_stats(db, user)
+    saved_api_config = (await db.execute(select(UserLLMConfig).where(UserLLMConfig.owner_id == user.id))).scalar_one_or_none()
+    api_config = {"provider": saved_api_config.provider, "base_url": saved_api_config.base_url, "model": saved_api_config.model} if saved_api_config else None
     return templates.TemplateResponse(
         request,
         "dashboard.html",
@@ -54,6 +56,8 @@ async def dashboard(
             "documents": documents,
             "conversations": conversations,
             "stats": stats,
+            "api_config": api_config,
+            "api_configured": saved_api_config is not None,
         },
     )
 
