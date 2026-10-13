@@ -20,7 +20,8 @@ class DocumentIngestionError(ValueError):
 def extract_text(filename: str, content_type: str | None, data: bytes) -> str:
     """Extract searchable text from PDF, TXT, or Markdown uploads."""
     suffix = PurePath(filename.lower()).suffix
-    if suffix == ".pdf" or (content_type or "").split(";", 1)[0].strip().lower() == "application/pdf":
+    is_pdf = (content_type or "").split(";", 1)[0].strip().lower() == "application/pdf"
+    if suffix == ".pdf" or is_pdf:
         try:
             reader = PdfReader(io.BytesIO(data))
             text = "\n".join((page.extract_text() or "") for page in reader.pages)
@@ -60,7 +61,7 @@ async def ingest_document(
     chunks = chunk_text(text, settings.chunk_size, settings.chunk_overlap)
     if not chunks:
         raise DocumentIngestionError(
-            "No searchable text could be extracted from this file. Try a text-based PDF, TXT, or Markdown file."
+            "No searchable text could be extracted. Try a text-based PDF, TXT, or Markdown file."
         )
 
     # Embed before adding the document so an embedding failure cannot leave a
