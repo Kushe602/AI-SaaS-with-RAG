@@ -51,7 +51,6 @@ async def test_search_scoped_to_document_ids():
             b"Database indexing improves query performance using B-tree structures.",
         )
 
-        # Even a cats-flavoured query must only return chunks from the scoped doc.
         results = await retrieval.search(
             db, user.id, "database indexing B-tree structures", top_k=5,
             document_ids=[db_doc.id],
@@ -93,9 +92,21 @@ def test_keyword_scores_downweight_terms_repeated_across_chunks():
     assert scores[0] > scores[2]
 
 
+def test_workflow_query_expands_to_project_pipeline_terms():
+    scores = retrieval._keyword_scores(
+        "give me the flow of project",
+        [
+            "The project overview explains the business goal.",
+            "Document upload, text extraction, chunking, embedding, retrieval, and answer generation form the workflow pipeline.",
+            "Dashboard panels show correlation and machine learning metrics.",
+        ],
+    )
+    assert scores[1] > scores[0]
+    assert scores[1] > scores[2]
+
+
 def test_mmr_select_prefers_diverse_results():
     relevance = np.array([1.0, 0.9, 0.8], dtype=np.float32)
-    # Items 0 and 1 are near-duplicates; item 2 is distinct.
     sim = np.array([[1.0, 1.0, 0.0], [1.0, 1.0, 0.0], [0.0, 0.0, 1.0]], dtype=np.float32)
     picked = retrieval._mmr_select(relevance, sim, top_k=2, lam=0.5)
     assert picked == [0, 2]
@@ -104,7 +115,6 @@ def test_mmr_select_prefers_diverse_results():
 def test_minmax_handles_all_equal_scores():
     out = retrieval._minmax(np.array([0.3, 0.3, 0.3], dtype=np.float32))
     assert np.allclose(out, 1.0)
-
 
 
 async def test_search_discards_chunks_below_relevance_threshold(monkeypatch):
