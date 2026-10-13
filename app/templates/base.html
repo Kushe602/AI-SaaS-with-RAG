@@ -3,16 +3,72 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#090d18" />
+  <meta name="color-scheme" content="dark" />
   <title>{% block title %}DocuChat{% endblock %}</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@2.0.3"></script>
   <style>
-    .bubble { max-width: 44rem; border-radius: 1rem; padding: 0.75rem 1rem; line-height: 1.55; }
+    :root {
+      color-scheme: dark;
+      --page: #090d18;
+      --surface: rgba(19, 27, 45, .88);
+      --surface-raised: #172238;
+      --line: rgba(148, 163, 184, .18);
+      --muted: #9ba9bf;
+      --text: #e8eef9;
+      --accent: #8b7cff;
+      --accent-bright: #a69aff;
+    }
+    * { box-sizing: border-box; }
+    html { background: var(--page); scroll-behavior: smooth; }
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 12% 0%, rgba(91, 76, 220, .18), transparent 36rem),
+        radial-gradient(ellipse at 92% 8%, rgba(14, 165, 233, .10), transparent 30rem),
+        var(--page);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: -.01em;
+    }
+    body .bg-white, body .bg-slate-50, body .bg-slate-100 {
+      background-color: var(--surface) !important;
+      color: var(--text);
+    }
+    body .text-slate-900, body .text-slate-800, body .text-slate-700 { color: var(--text) !important; }
+    body .text-slate-600, body .text-slate-500, body .text-slate-400 { color: var(--muted) !important; }
+    body [class*="border-slate-"] { border-color: var(--line) !important; }
+    body .bg-indigo-50 { background-color: rgba(139, 124, 255, .14) !important; }
+    body .text-indigo-700 { color: #c4bbff !important; }
+    body .hover\:bg-slate-50:hover, body .hover\:bg-slate-100:hover { background-color: rgba(148, 163, 184, .09) !important; }
+    body .bg-indigo-600 { background-color: var(--accent) !important; }
+    body .hover\:bg-indigo-500:hover { background-color: var(--accent-bright) !important; }
+    body .text-indigo-600 { color: var(--accent-bright) !important; }
+    body .shadow-sm { box-shadow: 0 16px 44px rgba(0, 0, 0, .16); }
+    body .rounded-2xl, body .rounded-xl, body .rounded-lg { transition: border-color .18s ease, background-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+    body .rounded-2xl.border:hover { border-color: rgba(166, 154, 255, .42) !important; }
+    a, button, input, textarea, select, summary { transition: color .18s ease, background-color .18s ease, border-color .18s ease, box-shadow .18s ease; }
+    a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, summary:focus-visible {
+      outline: 2px solid var(--accent-bright);
+      outline-offset: 3px;
+    }
+    input, textarea, select {
+      background-color: #0e1627;
+      color: var(--text);
+      border-color: var(--line);
+    }
+    input::placeholder, textarea::placeholder { color: #77869e; }
+    .bubble { max-width: 44rem; border-radius: 1rem; padding: .75rem 1rem; line-height: 1.65; }
     .htmx-indicator { opacity: 0; transition: opacity 150ms; }
     .htmx-request .htmx-indicator { opacity: 1; }
+    ::selection { background: rgba(139, 124, 255, .36); }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
   </style>
 </head>
-<body class="min-h-screen bg-slate-50 text-slate-900 antialiased">
+<body class="min-h-screen antialiased">
   {% block body %}{% endblock %}
   {% block scripts %}{% endblock %}
 </body>
