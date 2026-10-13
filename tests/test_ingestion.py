@@ -58,9 +58,5 @@ def test_extract_text_rejects_scanned_or_blank_pdf():
 
 
 def test_extract_text_rejects_malformed_pdf():
-    import pytest
-
-    from app.services.ingestion import DocumentIngestionError, extract_text
-
     with pytest.raises(DocumentIngestionError, match="PDF could not be read"):
         extract_text("broken.pdf", "application/pdf", b"not a pdf")
