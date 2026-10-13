@@ -11,8 +11,9 @@
         <option value="OpenRouter" data-base-url="https://openrouter.ai/api/v1" data-model="openai/gpt-4o-mini" {% if current_provider == 'OpenRouter' %}selected{% endif %}>OpenRouter</option>
         <option value="Mistral AI" data-base-url="https://api.mistral.ai/v1" data-model="mistral-small-latest" {% if current_provider == 'Mistral AI' %}selected{% endif %}>Mistral AI</option>
         <option value="Together AI" data-base-url="https://api.together.xyz/v1" data-model="meta-llama/Llama-3.3-70B-Instruct-Turbo" {% if current_provider == 'Together AI' %}selected{% endif %}>Together AI</option>
+        <option value="DeepSeek" data-base-url="https://api.deepseek.com" data-model="deepseek-chat" {% if current_provider == 'DeepSeek' %}selected{% endif %}>DeepSeek</option>
         <option value="Ollama" data-base-url="http://localhost:11434/v1" data-model="llama3.2" {% if current_provider == 'Ollama' %}selected{% endif %}>Ollama (self-hosted)</option>
-        <option value="Custom OpenAI-compatible" data-base-url="" data-model="" {% if current_provider not in ['OpenAI', 'Google Gemini', 'Groq', 'OpenRouter', 'Mistral AI', 'Together AI', 'Ollama'] %}selected{% endif %}>Other / Custom OpenAI-compatible API</option>
+        <option value="Custom OpenAI-compatible" data-base-url="" data-model="" {% if current_provider not in ['OpenAI', 'Google Gemini', 'Groq', 'OpenRouter', 'Mistral AI', 'Together AI', 'DeepSeek', 'Ollama'] %}selected{% endif %}>Other / Custom OpenAI-compatible API</option>
       </select>
     </label>
     <label class="block text-sm">Model name
