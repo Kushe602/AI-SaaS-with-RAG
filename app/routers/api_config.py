@@ -64,7 +64,10 @@ async def test_api_config(
 ):
     base_url, model, api_key = base_url.strip().rstrip("/"), model.strip(), api_key.strip()
     if not _valid_base_url(base_url) or not model:
-        return HTMLResponse('<p class="text-sm text-red-400">Enter a valid base URL and model.</p>', status_code=400)
+        return HTMLResponse(
+            '<p class="text-sm text-red-400">Enter a valid base URL and model.</p>',
+            status_code=400,
+        )
     if not api_key:
         saved = (await db.execute(
             select(UserLLMConfig).where(UserLLMConfig.owner_id == user.id)
@@ -72,7 +75,10 @@ async def test_api_config(
         if saved:
             api_key = decrypt_api_key(saved)
     if not api_key:
-        return HTMLResponse('<p class="text-sm text-red-400">Enter an API key to test.</p>', status_code=400)
+        return HTMLResponse(
+            '<p class="text-sm text-red-400">Enter an API key to test.</p>',
+            status_code=400,
+        )
     try:
         async with AsyncOpenAI(
             api_key=api_key, base_url=base_url, timeout=12.0, max_retries=0
@@ -83,7 +89,8 @@ async def test_api_config(
             )
     except Exception:
         return HTMLResponse(
-            '<p class="text-sm text-red-400">Connection failed. Check provider, key, URL, model, and account limits.</p>',
+            '<p class="text-sm text-red-400">Connection failed. Check provider, key, URL, model, '
+            'and account limits.</p>',
             status_code=400,
         )
     return HTMLResponse('<p class="text-sm text-emerald-400">Connection successful.</p>')
