@@ -1,20 +1,31 @@
 <section id="api-config-panel" class="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
   <h2 class="text-lg font-semibold">AI API configuration</h2>
-  <p class="mt-1 text-sm text-slate-400">Choose the provider, endpoint, model, and personal credential used for chat answers.</p>
+  <p class="mt-1 text-sm text-slate-400">Choose an AI provider, then enter its model and personal API credential.</p>
   <form action="/settings/api/save" method="post" class="mt-4 space-y-3">
-    <label class="block text-sm">Provider name
-      <input name="provider" required value="{{ api_config.provider if api_config else 'OpenAI' }}" class="mt-1 w-full rounded-lg border px-3 py-2" />
+    <label class="block text-sm">AI provider
+      <select name="provider" id="api-provider" required class="mt-1 w-full rounded-lg border px-3 py-2">
+        {% set current_provider = api_config.provider if api_config else 'OpenAI' %}
+        <option value="OpenAI" data-base-url="https://api.openai.com/v1" data-model="gpt-4o-mini" {% if current_provider == 'OpenAI' %}selected{% endif %}>OpenAI</option>
+        <option value="Google Gemini" data-base-url="https://generativelanguage.googleapis.com/v1beta/openai/" data-model="gemini-2.5-flash" {% if current_provider == 'Google Gemini' %}selected{% endif %}>Google Gemini</option>
+        <option value="Groq" data-base-url="https://api.groq.com/openai/v1" data-model="llama-3.3-70b-versatile" {% if current_provider == 'Groq' %}selected{% endif %}>Groq</option>
+        <option value="OpenRouter" data-base-url="https://openrouter.ai/api/v1" data-model="openai/gpt-4o-mini" {% if current_provider == 'OpenRouter' %}selected{% endif %}>OpenRouter</option>
+        <option value="Mistral AI" data-base-url="https://api.mistral.ai/v1" data-model="mistral-small-latest" {% if current_provider == 'Mistral AI' %}selected{% endif %}>Mistral AI</option>
+        <option value="Together AI" data-base-url="https://api.together.xyz/v1" data-model="meta-llama/Llama-3.3-70B-Instruct-Turbo" {% if current_provider == 'Together AI' %}selected{% endif %}>Together AI</option>
+        <option value="Ollama" data-base-url="http://localhost:11434/v1" data-model="llama3.2" {% if current_provider == 'Ollama' %}selected{% endif %}>Ollama (self-hosted)</option>
+        <option value="Custom OpenAI-compatible" data-base-url="" data-model="" {% if current_provider not in ['OpenAI', 'Google Gemini', 'Groq', 'OpenRouter', 'Mistral AI', 'Together AI', 'Ollama'] %}selected{% endif %}>Other / Custom OpenAI-compatible API</option>
+      </select>
     </label>
     <label class="block text-sm">Model name
-      <input name="model" required value="{{ api_config.model if api_config else 'gpt-4o-mini' }}" class="mt-1 w-full rounded-lg border px-3 py-2" />
+      <input name="model" id="api-model" required value="{{ api_config.model if api_config else 'gpt-4o-mini' }}" class="mt-1 w-full rounded-lg border px-3 py-2" />
     </label>
     <label class="block text-sm">API base URL
-      <input name="base_url" type="url" required value="{{ api_config.base_url if api_config else 'https://api.openai.com/v1' }}" class="mt-1 w-full rounded-lg border px-3 py-2" />
+      <input name="base_url" id="api-base-url" type="url" required value="{{ api_config.base_url if api_config else 'https://api.openai.com/v1' }}" class="mt-1 w-full rounded-lg border px-3 py-2" />
     </label>
-    <label class="block text-sm">Personal credential
+    <label class="block text-sm">Personal API key
       <input name="api_key" type="password" autocomplete="new-password" {% if not api_configured %}required{% endif %} class="mt-1 w-full rounded-lg border px-3 py-2" />
     </label>
-    <p class="text-xs text-slate-400">The credential is encrypted before database storage and is never shown again.</p>
+    <p class="text-xs text-slate-400">Use an API key from the selected provider. The key is encrypted before storage and is never shown again.</p>
+    <p class="text-xs text-amber-600">Note: Ollama must be reachable from the server running DocuChat; localhost refers to that server, not your computer.</p>
     <div class="flex flex-wrap gap-2"><button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Save configuration</button><button type="button" id="test-api-config" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold">Test connection</button></div>
     <div id="api-test-result" aria-live="polite" class="text-sm"></div>
   </form>
@@ -27,9 +38,23 @@
 <script>
 (() => {
   const form = document.querySelector('#api-config-panel form[action="/settings/api/save"]');
+  const provider = document.getElementById("api-provider");
+  const model = document.getElementById("api-model");
+  const baseUrl = document.getElementById("api-base-url");
   const button = document.getElementById("test-api-config");
   const result = document.getElementById("api-test-result");
-  if (!form || !button || !result) return;
+  if (!form || !provider || !model || !baseUrl || !button || !result) return;
+
+  provider.addEventListener("change", () => {
+    const option = provider.options[provider.selectedIndex];
+    const nextBaseUrl = option.dataset.baseUrl;
+    const nextModel = option.dataset.model;
+    if (nextBaseUrl) baseUrl.value = nextBaseUrl;
+    else baseUrl.value = "";
+    if (nextModel) model.value = nextModel;
+    else model.value = "";
+  });
+
   button.addEventListener("click", async () => {
     button.disabled = true;
     result.textContent = "Testing connection…";
