@@ -24,15 +24,29 @@ from app.services.embeddings import get_embedder
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _STOP_WORDS = {
-    "a", "an", "and", "are", "as", "at", "be", "by", "do", "does", "for",
-    "from", "how", "i", "in", "is", "it", "of", "on", "or", "that", "the",
-    "this", "to", "was", "what", "when", "where", "which", "who", "why",
-    "with", "would",
+    "a", "an", "and", "are", "as", "at", "be", "been", "being", "by", "can",
+    "could", "did", "do", "does", "for", "from", "give", "has", "have", "how",
+    "i", "in", "into", "is", "it", "its", "me", "of", "on", "or", "please",
+    "show", "tell", "that", "the", "their", "this", "to", "was", "we", "what",
+    "when", "where", "which", "who", "why", "will", "with", "would", "you",
 }
 
 
 def _tokenize(text: str) -> list[str]:
-    return _TOKEN_RE.findall(text.lower())
+    tokens = _TOKEN_RE.findall(text.lower())
+    # Small deterministic normalization for common inflections.
+    normalized = []
+    for token in tokens:
+        if token.endswith("ies") and len(token) > 4:
+            token = token[:-3] + "y"
+        elif token.endswith("ing") and len(token) > 5:
+            token = token[:-3]
+        elif token.endswith("ed") and len(token) > 4:
+            token = token[:-2]
+        elif token.endswith("s") and len(token) > 4:
+            token = token[:-1]
+        normalized.append(token)
+    return normalized
 
 
 def condense_query(
@@ -61,14 +75,32 @@ def _minmax(scores: np.ndarray) -> np.ndarray:
 
 
 def _keyword_scores(query: str, texts: Sequence[str]) -> np.ndarray:
-    """Score the fraction of meaningful query terms present in each chunk."""
+    """Return IDF-weighted query coverage, reducing the impact of boilerplate."""
     query_terms = set(_tokenize(query)) - _STOP_WORDS
     scores = np.zeros(len(texts), dtype=np.float32)
-    if not query_terms:
+    if not query_terms or not texts:
         return scores
-    for i, text in enumerate(texts):
-        text_terms = set(_tokenize(text))
-        scores[i] = len(query_terms & text_terms) / len(query_terms)
+
+    token_sets = [set(_tokenize(text)) for text in texts]
+    count = len(token_sets)
+    document_frequency = {
+        term: sum(term in terms for terms in token_sets) for term in query_terms
+    }
+    weights = {
+        term: np.log1p(
+            (count - document_frequency[term] + 0.5)
+            / (document_frequency[term] + 0.5)
+        )
+        for term in query_terms
+    }
+    total_weight = sum(weights.values())
+    if total_weight <= 0:
+        return scores
+
+    for i, terms in enumerate(token_sets):
+        scores[i] = sum(
+            weight for term, weight in weights.items() if term in terms
+        ) / total_weight
     return scores
 
 
@@ -133,8 +165,13 @@ async def search(
 
     # Avoid normalizing against the current result set: that can make unrelated
     # chunks look relevant when every candidate has a low score.
-    alpha = settings.hybrid_alpha
-    combined = alpha * np.clip(semantic, 0.0, 1.0) + (1.0 - alpha) * keyword
+    # Hashing embeddings are not semantic. In demo mode, rank only by lexical
+    # evidence rather than allowing hash collisions to promote unrelated chunks.
+    if settings.use_fake_embeddings:
+        combined = keyword
+    else:
+        alpha = settings.hybrid_alpha
+        combined = alpha * np.clip(semantic, 0.0, 1.0) + (1.0 - alpha) * keyword
     relevant = np.flatnonzero(combined >= settings.retrieval_min_score)
     if relevant.size == 0 or top_k <= 0:
         return []
