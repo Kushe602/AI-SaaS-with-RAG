@@ -3,17 +3,17 @@
     <span class="text-slate-500">{{ documents_used }}/{{ documents_limit }} documents used</span>
   </div>
 
-  <form hx-post="/documents/upload"
+  <form data-doc-upload hx-post="/documents/upload"
         hx-target="#documents-panel"
         hx-swap="outerHTML"
         hx-encoding="multipart/form-data"
         class="flex items-center gap-2">
     <input type="file" name="file" accept=".pdf,.txt,.md,.markdown" required
            class="flex-1 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-slate-200" />
-    <button type="submit" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700">
+    <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-wait disabled:opacity-60">
       Upload
     </button>
-    <span class="htmx-indicator text-sm text-slate-400">Processing…</span>
+    <span data-upload-status class="text-sm text-slate-400" role="status" aria-live="polite"></span>
   </form>
 
   {% if error %}

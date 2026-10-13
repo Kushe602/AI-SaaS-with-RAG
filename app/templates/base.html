@@ -71,5 +71,67 @@
 <body class="min-h-screen antialiased">
   {% block body %}{% endblock %}
   {% block scripts %}{% endblock %}
+  <script>
+    // Keep PDF uploads functional even if the external HTMX CDN is unavailable.
+    // This handler is scoped to the upload form; other HTMX interactions are unchanged.
+    document.addEventListener("submit", async (event) => {
+      const form = event.target.closest("form[data-doc-upload]");
+      if (!form) return;
+
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const fileInput = form.querySelector('input[type="file"]');
+      const button = form.querySelector('button[type="submit"]');
+      const status = form.querySelector("[data-upload-status]");
+      const targetSelector = form.getAttribute("hx-target") || "#documents-panel";
+      const target = document.querySelector(targetSelector);
+
+      if (!fileInput || !fileInput.files || !fileInput.files.length) {
+        if (status) status.textContent = "Choose a PDF or text file before uploading.";
+        return;
+      }
+      if (!target) {
+        if (status) status.textContent = "Upload area is unavailable. Refresh the page and try again.";
+        return;
+      }
+
+      if (button) button.disabled = true;
+      if (status) {
+        status.textContent = "Uploading and processing your document…";
+        status.classList.remove("text-red-400");
+        status.classList.add("text-slate-400");
+      }
+
+      try {
+        const response = await fetch(form.getAttribute("hx-post") || form.action, {
+          method: "POST",
+          body: new FormData(form),
+          credentials: "same-origin",
+          headers: { "HX-Request": "true" }
+        });
+        if (!response.ok) {
+          throw new Error("The server returned HTTP " + response.status + ".");
+        }
+
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, "text/html");
+        const replacement = parsed.querySelector(targetSelector);
+        const currentTarget = document.querySelector(targetSelector);
+        if (!replacement || !currentTarget) {
+          throw new Error("The server response did not contain the document list.");
+        }
+        currentTarget.replaceWith(replacement);
+      } catch (error) {
+        if (button) button.disabled = false;
+        if (status) {
+          status.textContent = "Upload failed. Check your connection and try again. " +
+            (error && error.message ? error.message : "");
+          status.classList.remove("text-slate-400");
+          status.classList.add("text-red-400");
+        }
+      }
+    }, true);
+  </script>
 </body>
 </html>
