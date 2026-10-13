@@ -7,7 +7,7 @@ from app.models import Message
 from app.services import llm
 
 
-async def _fake_stream(question, chunks, history=None):
+async def _fake_stream(question, chunks, history=None, provider_config=None):
     for token in ["Indexing ", "uses ", "B-trees ", "[1]"]:
         yield token
 
