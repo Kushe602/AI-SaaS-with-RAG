@@ -1,8 +1,12 @@
+import io
+
+import pytest
+from pypdf import PdfWriter
 from sqlalchemy import func, select
 
 from app.database import SessionLocal
 from app.models import Chunk, User
-from app.services.ingestion import ingest_document
+from app.services.ingestion import DocumentIngestionError, extract_text, ingest_document
 
 
 async def test_upload_creates_document_and_chunks(client):
@@ -34,30 +38,16 @@ async def test_ingest_document_service_directly():
 
 
 def test_extract_text_rejects_unsupported_file_type():
-    import pytest
-
-    from app.services.ingestion import DocumentIngestionError, extract_text
-
     with pytest.raises(DocumentIngestionError, match="Unsupported file type"):
         extract_text("notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", b"content")
 
 
 def test_extract_text_rejects_empty_text_file():
-    import pytest
-
-    from app.services.ingestion import DocumentIngestionError, extract_text
-
     with pytest.raises(DocumentIngestionError, match="No readable text"):
         extract_text("empty.txt", "text/plain", b"   \n\t")
 
 
 def test_extract_text_rejects_scanned_or_blank_pdf():
-    import io
-    import pytest
-    from pypdf import PdfWriter
-
-    from app.services.ingestion import DocumentIngestionError, extract_text
-
     buffer = io.BytesIO()
     writer = PdfWriter()
     writer.add_blank_page(width=612, height=792)
