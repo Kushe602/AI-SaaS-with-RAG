@@ -1,42 +1,109 @@
 {% extends "base.html" %}
 {% block title %}DocuChat — Chat with your documents{% endblock %}
 {% block body %}
-<header class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-  <span class="text-xl font-bold tracking-tight">📄 DocuChat</span>
-  <nav class="flex items-center gap-3 text-sm">
-    <a href="/login" class="rounded-lg px-4 py-2 font-medium text-slate-600 hover:text-slate-900">Sign in</a>
-    <a href="/register" class="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-700">Get started</a>
-  </nav>
+<header class="sticky top-0 z-20 border-b border-slate-200 bg-white">
+  <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-6">
+    <a href="/" class="flex items-center gap-3 text-lg font-bold tracking-tight" aria-label="DocuChat home">
+      <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-600 text-xl shadow-sm">D</span>
+      <span>DocuChat <span class="ml-1 text-xs font-medium text-slate-500">DOCUMENT INTELLIGENCE</span></span>
+    </a>
+    <nav class="flex items-center gap-2 text-sm" aria-label="Main navigation">
+      <a href="/login" class="rounded-lg px-3 py-2 font-medium text-slate-600 hover:text-slate-900">Sign in</a>
+      <a href="/register" class="rounded-lg bg-slate-900 px-4 py-2.5 font-semibold text-white hover:bg-slate-700">Get started <span aria-hidden="true">→</span></a>
+    </nav>
+  </div>
 </header>
 
-<main class="mx-auto max-w-6xl px-6">
-  <section class="py-20 text-center">
-    <h1 class="mx-auto max-w-3xl text-5xl font-extrabold tracking-tight sm:text-6xl">
-      Chat with your documents, grounded in <span class="text-indigo-600">real sources</span>.
-    </h1>
-    <p class="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
-      Upload PDFs and notes, then ask questions in plain language. DocuChat retrieves the most
-      relevant passages and answers with citations — powered by retrieval-augmented generation.
-    </p>
-    <div class="mt-10 flex justify-center gap-4">
-      <a href="/register" class="rounded-xl bg-indigo-600 px-6 py-3 font-semibold text-white shadow-sm hover:bg-indigo-500">Start free</a>
-      <a href="/login" class="rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-700 hover:bg-slate-50">Sign in</a>
+<main class="mx-auto max-w-6xl px-5 sm:px-6">
+  <section class="grid items-center gap-12 py-16 sm:py-24 lg:grid-cols-[1.1fr_.9fr]">
+    <div>
+      <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
+        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
+        DOCUMENT Q&amp;A WITH SOURCE CONTEXT
+      </div>
+      <h1 class="max-w-3xl text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
+        Your documents hold the answers.
+        <span class="text-indigo-600">Find them with confidence.</span>
+      </h1>
+      <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+        Upload PDFs or text notes, ask questions in plain language, and explore responses linked back to the passages they came from.
+        DocuChat combines retrieval-augmented generation with a conversation-first workflow.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <a href="/register" class="rounded-xl bg-indigo-600 px-6 py-3.5 font-semibold text-white shadow-sm hover:bg-indigo-500">Start exploring <span aria-hidden="true">→</span></a>
+        <a href="/login" class="rounded-xl border border-slate-300 bg-white px-6 py-3.5 font-semibold text-slate-700 hover:bg-slate-50">Sign in</a>
+      </div>
+      <p class="mt-4 text-xs leading-5 text-slate-500">A live demo may take a short time to wake after inactivity. Use your own documents and avoid uploading sensitive information to a public demo.</p>
+    </div>
+
+    <div class="relative">
+      <div class="absolute -inset-4 rounded-[2rem] bg-indigo-500/10 blur-2xl" aria-hidden="true"></div>
+      <div class="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/15 text-lg">⌕</span>
+            <div><p class="font-semibold">Ask your sources</p><p class="text-xs text-slate-500">A grounded document conversation</p></div>
+          </div>
+          <span class="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">Citations</span>
+        </div>
+        <div class="mt-5 space-y-4">
+          <div class="ml-auto max-w-[90%] rounded-2xl rounded-tr-sm bg-indigo-500/15 p-4 text-sm leading-6">
+            What are the main points in the documents I uploaded?
+          </div>
+          <div class="max-w-[95%] rounded-2xl rounded-tl-sm border border-slate-200 bg-slate-50 p-4 text-sm leading-6">
+            <p class="mb-2 font-semibold">A source-aware answer</p>
+            Relevant passages are retrieved first, then used to prepare a response. Citations connect you back to the supporting text.
+            <div class="mt-3 flex flex-wrap gap-2">
+              <span class="rounded-lg border border-indigo-400/20 bg-indigo-500/10 px-2.5 py-1 text-xs text-indigo-300">[1] Source passage</span>
+              <span class="rounded-lg border border-indigo-400/20 bg-indigo-500/10 px-2.5 py-1 text-xs text-indigo-300">[2] Supporting context</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 border-t border-slate-200 pt-4 text-xs text-slate-500">
+            <span class="h-2 w-2 rounded-full bg-indigo-400"></span>
+            Retrieve → answer → inspect sources
+          </div>
+        </div>
+        <p class="mt-4 text-xs text-slate-500">Illustrative preview — not a live chat or a claim about a specific document.</p>
+      </div>
     </div>
   </section>
 
-  <section class="grid gap-6 pb-24 sm:grid-cols-3">
-    {% set features = [
-      ("🔎", "Semantic retrieval", "Vector search finds the passages that actually answer your question."),
-      ("💬", "Streaming answers", "Responses stream token-by-token with inline citations to your sources."),
-      ("📊", "Usage & plans", "Per-user metering with free and pro tiers, ready for Stripe billing.")
-    ] %}
-    {% for icon, title, body in features %}
-    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div class="text-3xl">{{ icon }}</div>
-      <h3 class="mt-3 text-lg font-semibold">{{ title }}</h3>
-      <p class="mt-2 text-sm text-slate-600">{{ body }}</p>
+  <section class="border-t border-slate-200 py-12 sm:py-16">
+    <div class="mb-7 max-w-2xl">
+      <p class="text-xs font-bold uppercase tracking-[.2em] text-indigo-300">Built around your sources</p>
+      <h2 class="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">From file upload to traceable answers</h2>
+      <p class="mt-3 leading-7 text-slate-600">A focused workflow helps you ask follow-up questions without losing the context behind an answer.</p>
     </div>
-    {% endfor %}
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {% set features = [
+        ("01", "Retrieve relevant passages", "Hybrid semantic and keyword retrieval helps surface useful source text, with MMR reranking for diversity."),
+        ("02", "Follow the conversation", "Ask follow-up questions while conversation context helps clarify what you mean."),
+        ("03", "Inspect citations", "Clickable citations lead back to supporting passages so you can verify the response."),
+        ("04", "Choose document scope", "Limit a conversation to selected documents when you want a narrower source set."),
+        ("05", "Manage your library", "Review uploaded files and inspect extracted chunks from the document interface."),
+        ("06", "Know your usage", "Usage limits and plan information are surfaced in the application dashboard.")
+      ] %}
+      {% for number, title, description in features %}
+      <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <span class="text-xs font-bold tracking-widest text-indigo-300">{{ number }}</span>
+        <h3 class="mt-4 text-base font-semibold">{{ title }}</h3>
+        <p class="mt-2 text-sm leading-6 text-slate-600">{{ description }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="mb-16 rounded-3xl border border-slate-200 bg-white p-6 sm:p-9">
+    <div class="grid gap-6 sm:grid-cols-[1fr_auto] sm:items-center">
+      <div>
+        <h2 class="text-2xl font-bold tracking-tight">Ready to explore your documents?</h2>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Create an account, upload a supported file, and start with a specific question. Check the repository README for setup details and demo-mode limitations.</p>
+      </div>
+      <a href="/register" class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 font-semibold text-white hover:bg-indigo-500">Create account <span class="ml-2" aria-hidden="true">→</span></a>
+    </div>
   </section>
 </main>
+<footer class="border-t border-slate-200 px-5 py-6 text-center text-xs text-slate-500">
+  DocuChat · Document Q&amp;A with retrieval, streaming, and source citations.
+</footer>
 {% endblock %}
