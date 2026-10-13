@@ -121,14 +121,14 @@ async def _stream_demo_answer(
         return
 
     async for piece in _emit_words(
-        f'Here is what your documents say about **{question.strip()}**:\n\n'
+        f'Here are the most relevant passages for **{question.strip()}**:\n\n'
     ):
         yield piece
 
     for i, chunk in enumerate(chunks[: settings.max_context_chunks], start=1):
         snippet = " ".join(chunk.content.split())
-        if len(snippet) > 300:
-            snippet = snippet[:300].rstrip() + "…"
+        if len(snippet) > 900:
+            snippet = snippet[:900].rstrip() + "…"
         async for piece in _emit_words(f"- {snippet} [{i}]\n"):
             yield piece
 
