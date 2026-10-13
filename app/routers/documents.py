@@ -1,6 +1,7 @@
 """Document management routes: upload, list, view chunks, delete."""
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import HTMLResponse
+from pathlib import PurePath
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -56,8 +57,6 @@ async def upload(
 
     filename = file.filename or "upload.txt"
     allowed_suffixes = {".pdf", ".txt", ".md", ".markdown"}
-    from pathlib import PurePath
-
     if PurePath(filename.lower()).suffix not in allowed_suffixes:
         return await _render_panel(
             request, db, user,
