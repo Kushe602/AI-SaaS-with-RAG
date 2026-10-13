@@ -68,11 +68,29 @@ def test_condense_query_folds_recent_turns():
     assert "height" in condensed
 
 
-def test_keyword_scores_reward_term_overlap():
+def test_keyword_scores_reward_discriminative_term_overlap():
     scores = retrieval._keyword_scores(
-        "database indexing", ["database indexing is fast", "cats are furry"]
+        "database indexing",
+        [
+            "project project project database indexing database",
+            "project project project database",
+            "cats are furry",
+        ],
+    )
+    assert scores[0] > scores[1] > scores[2]
+
+
+def test_keyword_scores_downweight_terms_repeated_across_chunks():
+    scores = retrieval._keyword_scores(
+        "project indexing",
+        [
+            "project overview and indexing details",
+            "project background and project goals",
+            "project schedule and project report",
+        ],
     )
     assert scores[0] > scores[1]
+    assert scores[0] > scores[2]
 
 
 def test_mmr_select_prefers_diverse_results():
