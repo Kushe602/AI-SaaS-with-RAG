@@ -9,9 +9,8 @@
 [![Deploy to Render](https://img.shields.io/badge/deploy-Render-46E3B7)](https://render.com/deploy?repo=https://github.com/Kushe602/AI-SaaS-with-RAG)
 
 > **Live demo:** https://docuchat-94mn.onrender.com — hosted on a free instance,
-> so the first request may take ~50s to wake it. It runs in a keyless demo mode
-> (fake embeddings + extractive, cited answers), so you can register, upload a
-> document, and try grounded RAG answers with no API key.
+> so the first request may take ~50s to wake it. It runs with semantic local embeddings and extractive, cited demo answers.
+> A provider API key is needed for fully synthesized LLM answers.
 
 DocuChat is a full-stack, production-shaped web application built with **FastAPI + HTMX** and **any OpenAI-compatible LLM**. Users sign up, upload PDFs or text files, and ask questions in natural language. The app retrieves the most relevant passages from their documents and asks the model to answer using only that context — citing its sources.
 
@@ -122,11 +121,11 @@ This starts Postgres (with the `pgvector` extension available) and the app on ht
 
 ## ☁️ Deploy a live demo (Render, free)
 
-DocuChat ships a [`render.yaml`](render.yaml) Blueprint that deploys a **keyless demo**: deterministic hashing embeddings power retrieval, and answers are assembled extractively from the retrieved passages (with `[n]` citations), so the full **upload → retrieve → cited-answer** flow works live with no API key.
+DocuChat ships a [`render.yaml`](render.yaml) Blueprint that deploys semantic local embeddings for improved passage retrieval. Answers remain extractive and cited in keyless demo mode; configure an OpenAI-compatible provider to enable fully synthesized responses.
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Kushe602/AI-SaaS-with-RAG)
 
-Click the button (or in the Render dashboard use **New + → Blueprint** and pick this repo). Render builds the Dockerfile, generates a `SECRET_KEY`, and sets `USE_FAKE_EMBEDDINGS=true` + `USE_FAKE_LLM=true`. The free plan sleeps when idle (~50s cold start) and uses ephemeral SQLite (uploaded docs reset on restart). Set `LLM_API_KEY` (plus `LLM_BASE_URL` / `LLM_MODEL` for your provider) and drop `USE_FAKE_LLM` for fully model-generated answers.
+Click the button (or in the Render dashboard use **New + → Blueprint** and pick this repo). Render builds the Dockerfile, generates a `SECRET_KEY`, enables semantic embeddings (`USE_FAKE_EMBEDDINGS=false`), and keeps `USE_FAKE_LLM=true` for keyless extractive answers. The embedding model downloads on first use. If changing embedding backends on an existing database, re-upload/re-embed documents so stored vectors use the same model. The free plan sleeps when idle (~50s cold start) and uses ephemeral SQLite (uploaded docs reset on restart). Set `LLM_API_KEY` (plus `LLM_BASE_URL` / `LLM_MODEL` for your provider) and set `USE_FAKE_LLM=false` for fully model-generated answers.
 
 ---
 
@@ -159,7 +158,7 @@ The suite uses fake embeddings and a temporary SQLite database, so it runs anywh
 USE_FAKE_EMBEDDINGS=1 pytest -q
 ```
 
-Coverage spans auth (register/login/guarding), ingestion + chunking, retrieval ranking, and the full ask → stream → persist chat flow (with the LLM mocked).
+Coverage spans auth (register/login/guarding), ingestion + chunking, retrieval ranking, weak-match rejection, and the full ask → stream → persist chat flow (with the LLM mocked).
 
 ---
 

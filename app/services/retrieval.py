@@ -23,6 +23,12 @@ from app.models import Chunk
 from app.services.embeddings import get_embedder
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
+_STOP_WORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "do", "does", "for",
+    "from", "how", "i", "in", "is", "it", "of", "on", "or", "that", "the",
+    "this", "to", "was", "what", "when", "where", "which", "who", "why",
+    "with", "would",
+}
 
 
 def _tokenize(text: str) -> list[str]:
@@ -55,17 +61,14 @@ def _minmax(scores: np.ndarray) -> np.ndarray:
 
 
 def _keyword_scores(query: str, texts: Sequence[str]) -> np.ndarray:
-    """Normalized term-frequency overlap between the query and each text."""
-    query_terms = set(_tokenize(query))
+    """Score the fraction of meaningful query terms present in each chunk."""
+    query_terms = set(_tokenize(query)) - _STOP_WORDS
     scores = np.zeros(len(texts), dtype=np.float32)
     if not query_terms:
         return scores
     for i, text in enumerate(texts):
-        tokens = _tokenize(text)
-        if not tokens:
-            continue
-        hits = sum(1 for t in tokens if t in query_terms)
-        scores[i] = hits / len(tokens)
+        text_terms = set(_tokenize(text))
+        scores[i] = len(query_terms & text_terms) / len(query_terms)
     return scores
 
 
@@ -107,10 +110,9 @@ async def search(
 ) -> list[tuple[Chunk, float]]:
     """Return up to ``top_k`` (chunk, score) pairs, most relevant first.
 
-    Ranking blends semantic cosine similarity with a keyword term-frequency score
-    (weighted by ``HYBRID_ALPHA``), then reranks the top candidates with MMR
-    (``MMR_LAMBDA``) for diversity. ``document_ids`` scopes the search to a subset
-    of the owner's documents; ``None`` or empty means search them all.
+    Ranking blends raw cosine similarity with query-term coverage, removes weak
+    matches before MMR reranking, and then selects diverse relevant chunks.
+    ``document_ids`` scopes search to the owner's chosen documents.
     """
     stmt = select(Chunk).where(Chunk.owner_id == owner_id)
     if document_ids:
@@ -129,12 +131,16 @@ async def search(
 
     keyword = _keyword_scores(query, [c.content for c in chunks])
 
+    # Avoid normalizing against the current result set: that can make unrelated
+    # chunks look relevant when every candidate has a low score.
     alpha = settings.hybrid_alpha
-    combined = alpha * _minmax(semantic) + (1.0 - alpha) * _minmax(keyword)
+    combined = alpha * np.clip(semantic, 0.0, 1.0) + (1.0 - alpha) * keyword
+    relevant = np.flatnonzero(combined >= settings.retrieval_min_score)
+    if relevant.size == 0 or top_k <= 0:
+        return []
 
-    # Rerank a candidate pool with MMR over inter-chunk cosine similarity.
-    order = np.argsort(-combined, kind="stable")
-    pool_size = min(len(chunks), max(top_k, settings.retrieval_candidates))
+    order = relevant[np.argsort(-combined[relevant], kind="stable")]
+    pool_size = min(len(order), max(top_k, settings.retrieval_candidates))
     pool = [int(i) for i in order[:pool_size]]
     pool_vectors = matrix_norm[pool]
     sim_matrix = pool_vectors @ pool_vectors.T

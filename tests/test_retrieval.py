@@ -53,7 +53,8 @@ async def test_search_scoped_to_document_ids():
 
         # Even a cats-flavoured query must only return chunks from the scoped doc.
         results = await retrieval.search(
-            db, user.id, "furry animals that purr", top_k=5, document_ids=[db_doc.id]
+            db, user.id, "database indexing B-tree structures", top_k=5,
+            document_ids=[db_doc.id],
         )
         assert results
         assert all(chunk.document_id == db_doc.id for chunk, _ in results)
@@ -86,3 +87,23 @@ def test_minmax_handles_all_equal_scores():
     out = retrieval._minmax(np.array([0.3, 0.3, 0.3], dtype=np.float32))
     assert np.allclose(out, 1.0)
 
+
+
+async def test_search_discards_chunks_below_relevance_threshold(monkeypatch):
+    class ZeroQueryEmbedder:
+        def embed_one(self, _query):
+            return [0.0] * 384
+
+    async with SessionLocal() as db:
+        user = User(email="irrelevant@example.com", hashed_password="x")
+        db.add(user)
+        await db.commit()
+        await ingest_document(
+            db, user.id, "cats.txt", "text/plain",
+            b"Cats are small furry animals that purr and chase mice.",
+        )
+        monkeypatch.setattr(retrieval, "get_embedder", lambda: ZeroQueryEmbedder())
+        results = await retrieval.search(
+            db, user.id, "quantum spaceship banana", top_k=5
+        )
+        assert results == []

@@ -77,7 +77,7 @@ async def test_scoped_conversation_only_retrieves_in_scope(client, monkeypatch):
 
     # Ask about the OTHER document's topic; scoping must keep it out of the answer.
     ask = await client.post(
-        f"/chat/{conversation_id}/ask", data={"content": "Tell me about furry animals"}
+        f"/chat/{conversation_id}/ask", data={"content": "Tell me about database indexing"}
     )
     message_id = _assistant_id(ask.text)
     stream = await client.get(f"/chat/{conversation_id}/stream/{message_id}")
