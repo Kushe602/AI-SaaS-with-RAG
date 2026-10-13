@@ -9,7 +9,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import Chunk, Document
 from app.services import usage
-from app.services.ingestion import ingest_document
+from app.services.ingestion import DocumentIngestionError, ingest_document
 from app.web import templates
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -54,7 +54,27 @@ async def upload(
             request, db, user, error=f"File exceeds {settings.max_upload_mb} MB limit."
         )
 
-    await ingest_document(db, user.id, file.filename or "upload.txt", file.content_type, data)
+    filename = file.filename or "upload.txt"
+    allowed_suffixes = {".pdf", ".txt", ".md", ".markdown"}
+    from pathlib import PurePath
+
+    if PurePath(filename.lower()).suffix not in allowed_suffixes:
+        return await _render_panel(
+            request, db, user,
+            error="Unsupported file type. Upload a PDF, TXT, or Markdown file.",
+        )
+
+    try:
+        await ingest_document(db, user.id, filename, file.content_type, data)
+    except DocumentIngestionError as exc:
+        return await _render_panel(request, db, user, error=str(exc))
+    except Exception:
+        # Do not expose provider, parser, or database internals in the UI.
+        await db.rollback()
+        return await _render_panel(
+            request, db, user,
+            error="The document could not be processed. Please retry with a smaller or different file.",
+        )
     return await _render_panel(request, db, user)
 
 
