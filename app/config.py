@@ -16,15 +16,14 @@ class Settings(BaseSettings):
     # Database
     database_url: str = "sqlite+aiosqlite:///./docuchat.db"
 
-    # LLM (OpenAI-compatible: works with any provider/gateway that speaks the
-    # OpenAI API — OpenAI, Groq, Together, OpenRouter, a local server, etc.)
+    # Official OpenAI API defaults. Override these only when intentionally using
+    # another OpenAI-compatible provider.
     llm_api_key: str | None = None
-    llm_base_url: str = "https://api.justwoker.icu/v1"
+    llm_base_url: str = "https://api.openai.com/v1"
     llm_model: str = "gpt-4o-mini"
     max_context_chunks: int = 6
     max_answer_tokens: int = 1024
-    # Keyless demo answers: assemble a cited answer from the retrieved passages
-    # instead of calling the model (used by the public Render demo).
+    # Deterministic extractive demo mode; should be explicitly enabled.
     use_fake_llm: bool = False
 
     # Embeddings

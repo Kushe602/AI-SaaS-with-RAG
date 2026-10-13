@@ -14,7 +14,10 @@ SYSTEM_PROMPT = (
     "with inline passage citations such as [1] or [2]. If the context does not support "
     "the answer, say you couldn't find enough information in the provided documents. "
     "If only part of a multi-part question is supported, answer that part and clearly "
-    "state what is missing. Be concise."
+    "state what is missing. For requests about a project flow, workflow, process, or "
+    "architecture, organize the supported information into ordered stages; explain each "
+    "stage's input, action, and output when the documents provide those details. Do not "
+    "invent missing stages or dependencies. Be concise."
 )
 
 
@@ -31,17 +34,7 @@ async def stream_answer(
     chunks: Sequence[Chunk],
     history: Sequence[tuple[str, str]] | None = None,
 ) -> AsyncIterator[str]:
-    """Yield the answer token-by-token, grounded in ``chunks``.
-
-    ``history`` is the prior conversation as ``(role, content)`` pairs so
-    follow-up questions resolve against earlier turns. With ``USE_FAKE_LLM`` set —
-    the keyless demo deployment — the answer is assembled extractively from the
-    retrieved passages (and acknowledges the prior turn), so the full
-    upload → retrieve → cited-answer flow works live without an API key.
-    Otherwise an OpenAI-compatible model generates it (any provider/gateway
-    speaking the OpenAI API — configure ``LLM_BASE_URL`` / ``LLM_API_KEY`` /
-    ``LLM_MODEL``); with neither a key nor demo mode we return a gentle notice.
-    """
+    """Yield a grounded answer. The model path requires a configured API key."""
     if settings.use_fake_llm:
         async for piece in _stream_demo_answer(question, chunks, history):
             yield piece
@@ -53,9 +46,8 @@ async def stream_answer(
 
     if not settings.llm_api_key:
         yield (
-            "⚠️ No LLM_API_KEY is configured, so I can't generate an answer. "
-            "Add an API key for any OpenAI-compatible provider to the .env file "
-            "to enable chat."
+            "⚠️ OpenAI chat is not configured yet. Add LLM_API_KEY in the hosting "
+            "service's environment settings (never in source code), then redeploy."
         )
         return
 
@@ -86,7 +78,7 @@ async def stream_answer(
 
 
 async def _emit_words(text: str) -> AsyncIterator[str]:
-    """Yield ``text`` word-by-word so the client renders an incremental stream."""
+    """Yield text word-by-word so the client renders an incremental stream."""
     for word in text.split(" "):
         yield word + " "
 
@@ -96,14 +88,7 @@ async def _stream_demo_answer(
     chunks: Sequence[Chunk],
     history: Sequence[tuple[str, str]] | None = None,
 ) -> AsyncIterator[str]:
-    """Deterministic, keyless answer for the public demo.
-
-    Streams a short extractive answer built from the top retrieved passages, with
-    the same bracketed citations the real model is prompted to use, rendered as
-    markdown. When the conversation has prior turns it opens by acknowledging the
-    earlier question, so multi-turn follow-ups are exercised end-to-end without a
-    live model.
-    """
+    """Deterministic extractive answer for explicitly enabled demo mode."""
     prior_questions = [c for r, c in (history or []) if r == "user" and c.strip()]
     if prior_questions:
         async for piece in _emit_words(
@@ -121,11 +106,8 @@ async def _stream_demo_answer(
         return
 
     async for piece in _emit_words(
-        "This deployment is running in extractive demo mode, so it cannot synthesize "
-        "a reliable explanation from the document. Below are the passages that matched "
-        f"**{question.strip()}**. Check the citations before relying on them. "
-        "For a direct, synthesized answer, configure an LLM_API_KEY and disable "
-        "USE_FAKE_LLM.\n\n"
+        "This deployment is running in extractive demo mode. Below are passages "
+        f"retrieved for **{question.strip()}**; they are not a synthesized explanation.\n\n"
     ):
         yield piece
 
@@ -137,8 +119,7 @@ async def _stream_demo_answer(
             yield piece
 
     async for piece in _emit_words(
-        "\n_Demo mode: this answer is assembled directly from the passages "
-        "retrieved from your documents. Set an LLM_API_KEY to get fully "
-        "synthesized answers._"
+        "\n_Demo mode is enabled. Set USE_FAKE_LLM=false and configure LLM_API_KEY "
+        "to get synthesized answers._"
     ):
         yield piece
